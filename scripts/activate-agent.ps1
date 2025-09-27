@@ -70,12 +70,34 @@ if (Test-Path $configPath) {
     exit 1
 }
 
+# Carregar contexto automatico de agentes anteriores
+Write-Host "`nCarregando contexto automatico..." -ForegroundColor Cyan
+$contextResult = & "$PSScriptRoot\load-context.ps1" $AgentName $ProjectPath
+
+if ($contextResult.has_context) {
+    Write-Host "Contexto carregado com sucesso!" -ForegroundColor Green
+    Write-Host "Arquivo de contexto: $($contextResult.context_file)" -ForegroundColor Yellow
+    Write-Host "Outputs carregados: $($contextResult.loaded_outputs.Count)" -ForegroundColor White
+} else {
+    Write-Host "Nenhum contexto anterior encontrado" -ForegroundColor Yellow
+}
+
 # Carregar template de prompt
 $templatePath = Join-Path $PSScriptRoot "..\templates\$AgentName-prompt.md"
 if (Test-Path $templatePath) {
     Write-Host "`nTemplate de Prompt carregado:" -ForegroundColor Cyan
     Write-Host "Arquivo: $templatePath" -ForegroundColor Yellow
-    Write-Host "`nPara usar este agente, copie o template de prompt e adapte para sua necessidade." -ForegroundColor Green
+    
+    if ($contextResult.has_context) {
+        Write-Host "`nContexto automatico disponivel:" -ForegroundColor Green
+        Write-Host "Arquivo: $($contextResult.context_file)" -ForegroundColor Yellow
+        Write-Host "`nPara usar este agente com contexto automatico:" -ForegroundColor Cyan
+        Write-Host "1. Copie o template de prompt" -ForegroundColor White
+        Write-Host "2. Inclua o contexto automatico no seu prompt" -ForegroundColor White
+        Write-Host "3. Adapte para sua necessidade especifica" -ForegroundColor White
+    } else {
+        Write-Host "`nPara usar este agente, copie o template de prompt e adapte para sua necessidade." -ForegroundColor Green
+    }
 } else {
     Write-Host "Template de prompt nao encontrado: $templatePath" -ForegroundColor Yellow
 }

@@ -46,6 +46,17 @@ Write-Host "`n5. Ver Ajuda:" -ForegroundColor Yellow
 Write-Host "   ./scripts/help.ps1" -ForegroundColor Green
 Write-Host "   # Mostra esta tela de ajuda" -ForegroundColor Gray
 
+Write-Host "`n6. Gerenciar Outputs:" -ForegroundColor Yellow
+Write-Host "   ./scripts/save-output.ps1 [agent] [content] [filename]" -ForegroundColor Green
+Write-Host "   ./scripts/load-context.ps1 [agent]" -ForegroundColor Green
+Write-Host "   ./scripts/handoff.ps1 [from-agent] [to-agent]" -ForegroundColor Green
+Write-Host "   ./scripts/manage-outputs.ps1 [action]" -ForegroundColor Green
+Write-Host "   # Gerencia outputs e contexto automatico" -ForegroundColor Gray
+
+Write-Host "`n7. Workflow Automatico:" -ForegroundColor Yellow
+Write-Host "   ./scripts/auto-workflow.ps1 [workflow-name]" -ForegroundColor Green
+Write-Host "   # Executa workflow completo com handoff automatico" -ForegroundColor Gray
+
 Write-Host "`nExemplos de Uso:" -ForegroundColor Cyan
 
 Write-Host "`nExemplo 1: Desenvolvimento de uma Nova Feature" -ForegroundColor Yellow
