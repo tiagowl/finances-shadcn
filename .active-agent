@@ -1,7 +1,0 @@
-﻿{
-    "template_path":  "D:\\Tiago\\Área de Trabalho\\Molde\\agent-team-template\\scripts\\..\\templates\\architect-prompt.md",
-    "agent":  "architect",
-    "config_path":  "D:\\Tiago\\Área de Trabalho\\Molde\\agent-team-template\\scripts\\..\\agents\\architect\\config.json",
-    "name":  "Arquiteto de Software",
-    "activated_at":  "2025-09-27 10:55:54"
-}
