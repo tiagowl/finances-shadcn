@@ -1,7 +1,0 @@
-﻿{
-    "template_path":  "D:\\Tiago\\Área de Trabalho\\Molde\\agent-team-template\\scripts\\..\\templates\\product-owner-prompt.md",
-    "agent":  "product-owner",
-    "config_path":  "D:\\Tiago\\Área de Trabalho\\Molde\\agent-team-template\\scripts\\..\\agents\\product-owner\\config.json",
-    "name":  "Product Owner",
-    "activated_at":  "2025-09-27 12:18:52"
-}
