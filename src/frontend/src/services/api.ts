@@ -36,8 +36,9 @@ class ApiService {
   private api: AxiosInstance;
 
   constructor() {
+    const apiUrl = import.meta.env.VITE_API_URL || '/api';
     this.api = axios.create({
-      baseURL: '/api',
+      baseURL: apiUrl,
       headers: {
         'Content-Type': 'application/json',
       },
