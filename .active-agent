@@ -1,0 +1,7 @@
+﻿{
+    "template_path":  "D:\\Tiago\\Área de Trabalho\\Projetos\\agent-team-template\\scripts\\..\\templates\\tester-prompt.md",
+    "agent":  "tester",
+    "config_path":  "D:\\Tiago\\Área de Trabalho\\Projetos\\agent-team-template\\scripts\\..\\agents\\tester\\config.json",
+    "name":  "Tester",
+    "activated_at":  "2025-12-03 10:30:24"
+}

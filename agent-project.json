@@ -1,0 +1,21 @@
+﻿{
+    "project":  {
+                    "created":  "2025-12-02 15:35:33",
+                    "agents":  [
+                                   "product-owner",
+                                   "architect",
+                                   "frontend-dev",
+                                   "backend-dev",
+                                   "devops",
+                                   "tester",
+                                   "ux"
+                               ],
+                    "name":  "Finances-Preview",
+                    "workflows":  [
+                                      "complete-development",
+                                      "feature-development",
+                                      "bug-fixing",
+                                      "code-review"
+                                  ]
+                }
+}

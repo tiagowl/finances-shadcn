@@ -1,0 +1,43 @@
+import { IUserRepository } from '@/domain/repositories/user.repository.interface';
+import { User } from '@/domain/entities/user.entity';
+import { CreateUserDTO } from '@/application/dto/create-user.dto';
+import { ValidationError } from '@/shared/errors/validation-error';
+import bcrypt from 'bcrypt';
+import { generateUUID } from '@/shared/utils/uuid';
+
+export class RegisterUseCase {
+  constructor(private userRepository: IUserRepository) {}
+
+  async execute(dto: CreateUserDTO): Promise<{ user: Omit<User, 'passwordHash'>; token: string }> {
+    // Check if user already exists
+    const existingUser = await this.userRepository.findByEmail(dto.email);
+    if (existingUser) {
+      throw new ValidationError('Email already registered');
+    }
+
+    // Hash password
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+
+    // Create user
+    const now = new Date();
+    const user = new User(
+      generateUUID(),
+      dto.email.toLowerCase(),
+      dto.name,
+      passwordHash,
+      now,
+      now
+    );
+
+    const createdUser = await this.userRepository.create(user);
+
+    // Generate JWT token (will be done in the route handler)
+    const { passwordHash: _, ...userWithoutPassword } = createdUser;
+
+    return {
+      user: userWithoutPassword,
+      token: '', // Will be set in route handler
+    };
+  }
+}
+
