@@ -1,6 +1,7 @@
 // Vercel Serverless Function Entry Point
-// Vercel will compile this file and resolve the import path
-import app from '../src/presentation/http/server';
+// Import from compiled code in dist/ directory
+// In ES modules, must include .js extension
+import app from '../dist/src/presentation/http/server.js';
 
 export default app;
 
