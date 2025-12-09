@@ -1,6 +1,7 @@
 {
   "name": "finance-control-backend",
   "version": "1.0.0",
+  "type": "module",
   "description": "Backend API for Finance Control System",
   "main": "dist/server.js",
   "scripts": {

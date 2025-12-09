@@ -14,8 +14,9 @@ async function start() {
   }
 }
 
-// Handle Vercel serverless
-if (require.main === module) {
+// Start server if not in Vercel serverless environment
+// Vercel will handle the serverless function separately
+if (process.env.VERCEL !== '1') {
   start();
 }
 
