@@ -24,7 +24,13 @@ export class PostgreSQLUserRepository implements IUserRepository {
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    const user = await db('users').where({ email }).first();
+    // Normalize email: lowercase and trim
+    const normalizedEmail = email.toLowerCase().trim();
+    // Use LOWER() in database query to ensure case-insensitive comparison
+    // This handles cases where emails in DB might not be normalized
+    const user = await db('users')
+      .whereRaw('LOWER(TRIM(email)) = ?', [normalizedEmail])
+      .first();
     return user ? this.toEntity(user) : null;
   }
 
@@ -47,11 +53,17 @@ export class PostgreSQLUserRepository implements IUserRepository {
   }
 
   private toEntity(row: any): User {
+    // Ensure password_hash is properly mapped
+    const passwordHash = row.password_hash || row.passwordHash;
+    if (!passwordHash) {
+      throw new Error(`User entity missing password_hash for user ${row.id}`);
+    }
+    
     return new User(
       row.id,
       row.email,
       row.name,
-      row.password_hash,
+      passwordHash,
       row.created_at,
       row.updated_at
     );

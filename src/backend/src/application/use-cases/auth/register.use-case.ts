@@ -18,12 +18,12 @@ export class RegisterUseCase {
     // Hash password
     const passwordHash = await bcrypt.hash(dto.password, 10);
 
-    // Create user
+    // Create user (email is already normalized by Zod schema)
     const now = new Date();
     const user = new User(
       generateUUID(),
-      dto.email.toLowerCase(),
-      dto.name,
+      dto.email, // Already normalized by Zod
+      dto.name, // Already trimmed by Zod
       passwordHash,
       now,
       now
