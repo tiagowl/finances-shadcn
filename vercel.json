@@ -1,15 +1,15 @@
 {
-  "buildCommand": "cd src/backend && npm install && npm run build",
-  "installCommand": "cd src/backend && npm install",
+  "buildCommand": "npm install && npm run build",
+  "installCommand": "npm install",
   "functions": {
-    "src/backend/api/index.ts": {
-      "includeFiles": "src/backend/dist/**"
+    "api/index.ts": {
+      "includeFiles": "dist/**"
     }
   },
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "/src/backend/api/index.ts"
+      "destination": "/api/index.ts"
     }
   ]
 }
