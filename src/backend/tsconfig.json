@@ -4,7 +4,7 @@
     "module": "ESNext",
     "lib": ["ES2022", "DOM"],
     "moduleResolution": "node",
-    "rootDir": ".",
+    "rootDir": "./src",
     "outDir": "./dist",
     "strict": true,
     "esModuleInterop": true,
@@ -19,6 +19,6 @@
       "@/*": ["src/*"]
     }
   },
-  "include": ["src/**/*", "api/**/*"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts"]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "**/*.test.ts", "api/**/*"]
 }
