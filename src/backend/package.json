@@ -6,7 +6,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc && tsc-alias",
+    "build": "npx tsc && npx tsc-alias",
     "start": "node dist/server.js",
     "migrate": "tsx scripts/migrate.ts",
     "migrate:make": "knex migrate:make",

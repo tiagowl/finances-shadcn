@@ -1,14 +1,15 @@
 {
   "buildCommand": "cd src/backend && npm ci && npm run build",
   "functions": {
-    "api/index.ts": {
-      "includeFiles": "dist/**"
+    "src/backend/api/index.ts": {
+      "includeFiles": "src/backend/dist/**"
     }
   },
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "/api/index.ts"
+      "destination": "/src/backend/api/index.ts"
     }
   ]
 }
+
