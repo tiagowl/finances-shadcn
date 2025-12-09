@@ -27,9 +27,14 @@ const app = Fastify({
 // Register plugins
 app.register(helmet);
 
+// Helper function to normalize URLs (remove trailing slash, ensure consistent format)
+function normalizeOrigin(origin: string): string {
+  return origin.trim().replace(/\/$/, ''); // Remove trailing slash
+}
+
 // CORS configuration - supports multiple origins
 const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:5173';
-const corsOrigins = corsOrigin.split(',').map((origin) => origin.trim());
+const corsOrigins = corsOrigin.split(',').map(normalizeOrigin);
 
 // In development, allow all localhost origins
 const isDevelopment = process.env.NODE_ENV === 'development' || process.env.VERCEL_ENV === 'development';
@@ -41,15 +46,31 @@ app.register(cors, {
       return callback(null, true);
     }
 
+    const normalizedOrigin = normalizeOrigin(origin);
+
     // In development, allow all localhost origins
     if (isDevelopment) {
-      if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      if (normalizedOrigin.includes('localhost') || normalizedOrigin.includes('127.0.0.1')) {
         return callback(null, true);
       }
     }
 
-    // Check if origin is in the configured list
-    if (corsOrigins.includes(origin)) {
+    // Check if origin is in the configured list (exact match)
+    if (corsOrigins.includes(normalizedOrigin)) {
+      return callback(null, true);
+    }
+
+    // Also check if origin matches any configured origin (protocol-agnostic)
+    const originMatches = corsOrigins.some((allowedOrigin) => {
+      const normalizedAllowed = normalizeOrigin(allowedOrigin);
+      // Compare without protocol for flexibility
+      const originWithoutProtocol = normalizedOrigin.replace(/^https?:\/\//, '');
+      const allowedWithoutProtocol = normalizedAllowed.replace(/^https?:\/\//, '');
+      
+      return originWithoutProtocol === allowedWithoutProtocol;
+    });
+
+    if (originMatches) {
       return callback(null, true);
     }
 

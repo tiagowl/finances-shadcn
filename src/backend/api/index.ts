@@ -29,20 +29,26 @@ const app = Fastify({
 // Register plugins
 app.register(helmet);
 
+// Helper function to normalize URLs (remove trailing slash, ensure consistent format)
+function normalizeOrigin(origin: string): string {
+  return origin.trim().replace(/\/$/, ''); // Remove trailing slash
+}
+
 // CORS configuration - supports multiple origins
 const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:5173';
-const corsOrigins = corsOrigin.split(',').map((origin) => origin.trim());
+const corsOrigins = corsOrigin.split(',').map(normalizeOrigin);
 
 // In development, allow all localhost origins
 const isDevelopment = process.env.NODE_ENV === 'development' || process.env.VERCEL_ENV === 'development';
 
-// Log CORS configuration for debugging
+// Log CORS configuration for debugging (always log in production to help debug)
 console.log('CORS Configuration:', {
   corsOrigin,
   corsOrigins,
   isDevelopment,
   nodeEnv: process.env.NODE_ENV,
   vercelEnv: process.env.VERCEL_ENV,
+  hasCorsOrigin: !!process.env.CORS_ORIGIN,
 });
 
 app.register(cors, {
@@ -53,22 +59,42 @@ app.register(cors, {
       return callback(null, true);
     }
 
+    const normalizedOrigin = normalizeOrigin(origin);
+
     // In development, allow all localhost origins
     if (isDevelopment) {
-      if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
-        console.log('CORS: Allowing localhost origin:', origin);
+      if (normalizedOrigin.includes('localhost') || normalizedOrigin.includes('127.0.0.1')) {
+        console.log('CORS: Allowing localhost origin:', normalizedOrigin);
         return callback(null, true);
       }
     }
 
-    // Check if origin is in the configured list
-    if (corsOrigins.includes(origin)) {
-      console.log('CORS: Allowing configured origin:', origin);
+    // Check if origin is in the configured list (exact match)
+    if (corsOrigins.includes(normalizedOrigin)) {
+      console.log('CORS: Allowing configured origin (exact match):', normalizedOrigin);
+      return callback(null, true);
+    }
+
+    // Also check if origin matches any configured origin (case-insensitive, protocol-agnostic)
+    const originMatches = corsOrigins.some((allowedOrigin) => {
+      const normalizedAllowed = normalizeOrigin(allowedOrigin);
+      // Compare without protocol for flexibility
+      const originWithoutProtocol = normalizedOrigin.replace(/^https?:\/\//, '');
+      const allowedWithoutProtocol = normalizedAllowed.replace(/^https?:\/\//, '');
+      
+      if (originWithoutProtocol === allowedWithoutProtocol) {
+        console.log('CORS: Allowing origin (protocol-agnostic match):', normalizedOrigin, 'matches', normalizedAllowed);
+        return true;
+      }
+      return false;
+    });
+
+    if (originMatches) {
       return callback(null, true);
     }
 
     // Log rejected origin for debugging
-    console.log('CORS: Rejecting origin:', origin, 'Allowed origins:', corsOrigins);
+    console.log('CORS: Rejecting origin:', normalizedOrigin, 'Allowed origins:', corsOrigins);
     callback(new Error('Not allowed by CORS'), false);
   },
   credentials: true,
