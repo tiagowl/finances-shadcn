@@ -1,6 +1,6 @@
 {
-  "buildCommand": "cd src/backend && npm install && npm run build",
-  "installCommand": "cd src/backend && npm install",
+  "buildCommand": "chmod +x build.sh && bash build.sh",
+  "installCommand": "if [ -d 'src/backend' ]; then cd src/backend && npm install; elif [ -d 'backend' ]; then cd backend && npm install; else npm install; fi",
   "functions": {
     "src/backend/api/index.ts": {
       "includeFiles": "src/backend/dist/**"
