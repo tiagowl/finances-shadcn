@@ -1,5 +1,5 @@
 {
-  "buildCommand": "cd src/backend && npm ci && npm run build",
+  "buildCommand": "cd src/backend && npm install && npm run build",
   "functions": {
     "src/backend/api/index.ts": {
       "includeFiles": "src/backend/dist/**"
