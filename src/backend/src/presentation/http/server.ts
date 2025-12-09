@@ -32,29 +32,32 @@ const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:5173';
 const corsOrigins = corsOrigin.split(',').map((origin) => origin.trim());
 
 // In development, allow all localhost origins
-const isDevelopment = process.env.NODE_ENV === 'development';
+const isDevelopment = process.env.NODE_ENV === 'development' || process.env.VERCEL_ENV === 'development';
 
 app.register(cors, {
-  origin: isDevelopment
-    ? (origin, callback) => {
-        // In development, allow requests with no origin or from localhost/127.0.0.1
-        if (!origin) {
-          return callback(null, true);
-        }
-        // Allow any localhost or 127.0.0.1 origin in development
-        if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
-          return callback(null, true);
-        }
-        // Also check configured origins
-        if (corsOrigins.includes(origin)) {
-          return callback(null, true);
-        }
-        callback(new Error('Not allowed by CORS'), false);
+  origin: (origin, callback) => {
+    // Allow requests with no origin (e.g., mobile apps, Postman)
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    // In development, allow all localhost origins
+    if (isDevelopment) {
+      if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+        return callback(null, true);
       }
-    : corsOrigins.length === 1
-      ? corsOrigins[0]
-      : corsOrigins,
+    }
+
+    // Check if origin is in the configured list
+    if (corsOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    callback(new Error('Not allowed by CORS'), false);
+  },
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 });
 
 app.register(rateLimit, {
