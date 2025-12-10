@@ -1,0 +1,19 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "skipLibCheck": true,
+    "moduleResolution": "node",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "baseUrl": "..",
+    "rootDir": "..",
+    "paths": {
+      "@/*": ["src/*"]
+    },
+    "typeRoots": ["../node_modules/@types"]
+  },
+  "include": ["index.ts", "../dist/**/*.d.ts"],
+  "exclude": ["node_modules"]
+}
+
