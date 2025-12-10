@@ -53,8 +53,8 @@ export class PostgreSQLUserRepository implements IUserRepository {
   }
 
   private toEntity(row: any): User {
-    // Ensure password_hash is properly mapped
-    const passwordHash = row.password_hash || row.passwordHash;
+    // Ensure password_hash is properly mapped and trimmed
+    const passwordHash = (row.password_hash || row.passwordHash || '').trim();
     if (!passwordHash) {
       throw new Error(`User entity missing password_hash for user ${row.id}`);
     }

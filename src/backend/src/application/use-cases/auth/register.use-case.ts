@@ -15,8 +15,19 @@ export class RegisterUseCase {
       throw new ValidationError('Email already registered');
     }
 
-    // Hash password
-    const passwordHash = await bcrypt.hash(dto.password, 10);
+    // Ensure password is not empty and trimmed
+    const password = dto.password?.trim() || '';
+    if (!password || password === '') {
+      throw new ValidationError('Password is required');
+    }
+
+    // Hash password with bcrypt (salt rounds: 10)
+    const passwordHash = await bcrypt.hash(password, 10);
+    
+    // Validate that hash was created successfully
+    if (!passwordHash || !passwordHash.startsWith('$2')) {
+      throw new Error('Failed to hash password');
+    }
 
     // Create user (email is already normalized by Zod schema)
     const now = new Date();
