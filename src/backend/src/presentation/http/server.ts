@@ -24,21 +24,24 @@ const app = Fastify({
   logger: false,
 });
 
-// Register plugins
-app.register(helmet);
-
 // Helper function to normalize URLs (remove trailing slash, ensure consistent format)
 function normalizeOrigin(origin: string): string {
-  return origin.trim().replace(/\/$/, ''); // Remove trailing slash
+  if (!origin) return '';
+  return origin.trim().replace(/\/$/, '').toLowerCase(); // Remove trailing slash and normalize to lowercase
 }
 
 // CORS configuration - supports multiple origins
-const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:5173';
-const corsOrigins = corsOrigin.split(',').map(normalizeOrigin);
+const corsOrigin = (process.env.CORS_ORIGIN || 'http://localhost:5173').trim();
+const corsOrigins = corsOrigin
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(origin => origin.length > 0)
+  .map(normalizeOrigin);
 
 // In development, allow all localhost origins
 const isDevelopment = process.env.NODE_ENV === 'development' || process.env.VERCEL_ENV === 'development';
 
+// Register CORS FIRST, before Helmet, to ensure CORS headers are set
 app.register(cors, {
   origin: (origin, callback) => {
     // Allow requests with no origin (e.g., mobile apps, Postman)
@@ -55,19 +58,36 @@ app.register(cors, {
       }
     }
 
-    // Check if origin is in the configured list (exact match)
+    // Check if origin is in the configured list (exact match after normalization)
     if (corsOrigins.includes(normalizedOrigin)) {
       return callback(null, true);
     }
 
-    // Also check if origin matches any configured origin (protocol-agnostic)
+    // Also check if origin matches any configured origin (protocol-agnostic, case-insensitive)
     const originMatches = corsOrigins.some((allowedOrigin) => {
       const normalizedAllowed = normalizeOrigin(allowedOrigin);
-      // Compare without protocol for flexibility
+      
+      // Exact match (already checked above, but keeping for consistency)
+      if (normalizedOrigin === normalizedAllowed) {
+        return true;
+      }
+      
+      // Protocol-agnostic match (case-insensitive)
       const originWithoutProtocol = normalizedOrigin.replace(/^https?:\/\//, '');
       const allowedWithoutProtocol = normalizedAllowed.replace(/^https?:\/\//, '');
       
-      return originWithoutProtocol === allowedWithoutProtocol;
+      if (originWithoutProtocol === allowedWithoutProtocol) {
+        return true;
+      }
+      
+      // Check if origin matches allowed origin (for subdomains and variations)
+      if (originWithoutProtocol === allowedWithoutProtocol || 
+          originWithoutProtocol.endsWith('.' + allowedWithoutProtocol) ||
+          allowedWithoutProtocol.endsWith('.' + originWithoutProtocol)) {
+        return true;
+      }
+      
+      return false;
     });
 
     if (originMatches) {
@@ -78,7 +98,17 @@ app.register(cors, {
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Content-Length', 'Content-Type'],
+  preflightContinue: false,
+  optionsSuccessStatus: 204,
+});
+
+// Register Helmet AFTER CORS, and configure it to not interfere with CORS
+app.register(helmet, {
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  crossOriginEmbedderPolicy: false,
+  contentSecurityPolicy: false, // Disable CSP to avoid conflicts
 });
 
 app.register(rateLimit, {

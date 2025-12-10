@@ -28,12 +28,17 @@ const app = Fastify({
 
 // Helper function to normalize URLs (remove trailing slash, ensure consistent format)
 function normalizeOrigin(origin: string): string {
-  return origin.trim().replace(/\/$/, ''); // Remove trailing slash
+  if (!origin) return '';
+  return origin.trim().replace(/\/$/, '').toLowerCase(); // Remove trailing slash and normalize to lowercase
 }
 
 // CORS configuration - supports multiple origins
-const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:5173';
-const corsOrigins = corsOrigin.split(',').map(normalizeOrigin);
+const corsOrigin = (process.env.CORS_ORIGIN || 'http://localhost:5173').trim();
+const corsOrigins = corsOrigin
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(origin => origin.length > 0)
+  .map(normalizeOrigin);
 
 // In development, allow all localhost origins
 const isDevelopment = process.env.NODE_ENV === 'development' || process.env.VERCEL_ENV === 'development';
@@ -46,6 +51,7 @@ console.log('CORS Configuration:', {
   nodeEnv: process.env.NODE_ENV,
   vercelEnv: process.env.VERCEL_ENV,
   hasCorsOrigin: !!process.env.CORS_ORIGIN,
+  corsOriginRaw: process.env.CORS_ORIGIN,
 });
 
 // Register CORS FIRST, before Helmet, to ensure CORS headers are set
@@ -67,7 +73,7 @@ app.register(cors, {
       }
     }
 
-    // Check if origin is in the configured list (exact match)
+    // Check if origin is in the configured list (exact match after normalization)
     if (corsOrigins.includes(normalizedOrigin)) {
       console.log('CORS: Allowing configured origin (exact match):', normalizedOrigin);
       return callback(null, true);
@@ -77,23 +83,25 @@ app.register(cors, {
     const originMatches = corsOrigins.some((allowedOrigin) => {
       const normalizedAllowed = normalizeOrigin(allowedOrigin);
       
-      // Exact match
+      // Exact match (already checked above, but keeping for consistency)
       if (normalizedOrigin === normalizedAllowed) {
         return true;
       }
       
-      // Protocol-agnostic match
-      const originWithoutProtocol = normalizedOrigin.replace(/^https?:\/\//, '').toLowerCase();
-      const allowedWithoutProtocol = normalizedAllowed.replace(/^https?:\/\//, '').toLowerCase();
+      // Protocol-agnostic match (case-insensitive)
+      const originWithoutProtocol = normalizedOrigin.replace(/^https?:\/\//, '');
+      const allowedWithoutProtocol = normalizedAllowed.replace(/^https?:\/\//, '');
       
       if (originWithoutProtocol === allowedWithoutProtocol) {
         console.log('CORS: Allowing origin (protocol-agnostic match):', normalizedOrigin, 'matches', normalizedAllowed);
         return true;
       }
       
-      // Check if origin contains the allowed origin (for subdomains)
-      if (normalizedOrigin.includes(normalizedAllowed) || normalizedAllowed.includes(normalizedOrigin)) {
-        console.log('CORS: Allowing origin (subdomain match):', normalizedOrigin, 'matches', normalizedAllowed);
+      // Check if origin matches allowed origin (for subdomains and variations)
+      if (originWithoutProtocol === allowedWithoutProtocol || 
+          originWithoutProtocol.endsWith('.' + allowedWithoutProtocol) ||
+          allowedWithoutProtocol.endsWith('.' + originWithoutProtocol)) {
+        console.log('CORS: Allowing origin (domain match):', normalizedOrigin, 'matches', normalizedAllowed);
         return true;
       }
       
@@ -122,31 +130,7 @@ app.register(cors, {
 app.register(helmet, {
   crossOriginResourcePolicy: { policy: 'cross-origin' },
   crossOriginEmbedderPolicy: false,
-});
-
-// Handle preflight requests explicitly (before CORS plugin processes them)
-app.addHook('onRequest', async (request, reply) => {
-  if (request.method === 'OPTIONS') {
-    const origin = request.headers.origin;
-    if (origin) {
-      const normalizedOrigin = normalizeOrigin(origin);
-      const isAllowed = corsOrigins.some((allowedOrigin) => {
-        const normalizedAllowed = normalizeOrigin(allowedOrigin);
-        const originWithoutProtocol = normalizedOrigin.replace(/^https?:\/\//, '');
-        const allowedWithoutProtocol = normalizedAllowed.replace(/^https?:\/\//, '');
-        return originWithoutProtocol === allowedWithoutProtocol || normalizedOrigin === normalizedAllowed;
-      }) || isDevelopment || normalizedOrigin.includes('localhost') || normalizedOrigin.includes('127.0.0.1');
-      
-      if (isAllowed) {
-        reply.header('Access-Control-Allow-Origin', origin);
-        reply.header('Access-Control-Allow-Credentials', 'true');
-        reply.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-        reply.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-        reply.header('Access-Control-Max-Age', '86400');
-        return reply.code(204).send();
-      }
-    }
-  }
+  contentSecurityPolicy: false, // Disable CSP to avoid conflicts
 });
 
 app.register(rateLimit, {
