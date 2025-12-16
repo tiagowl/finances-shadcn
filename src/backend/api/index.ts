@@ -66,5 +66,11 @@ app.register(wishRoutes, { prefix: apiPrefix });
 app.register(shoppingListRoutes, { prefix: apiPrefix });
 app.register(notificationRoutes, { prefix: apiPrefix });
 
-// Export as default for Vercel serverless function
-export default app;
+// Serverless handler for Vercel
+export default async function handler(req: any, res: any) {
+  await app.ready();
+  app.server.emit('request', req, res);
+}
+
+// Also export app for direct usage if needed
+export { app };
