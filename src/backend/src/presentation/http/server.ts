@@ -1,4 +1,5 @@
 import Fastify from 'fastify';
+import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import jwt from '@fastify/jwt';
 import dotenv from 'dotenv';
@@ -21,39 +22,14 @@ const app = Fastify({
   logger: false,
 });
 
-// CORS: Allow all origins without restrictions
-app.addHook('onRequest', async (request, reply) => {
-  const origin = request.headers.origin;
-  
-  // Handle preflight OPTIONS requests
-  if (request.method === 'OPTIONS') {
-    if (origin) {
-      reply.header('Access-Control-Allow-Origin', origin);
-    } else {
-      reply.header('Access-Control-Allow-Origin', '*');
-    }
-    reply.header('Access-Control-Allow-Credentials', 'true');
-    reply.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-    reply.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-    reply.header('Access-Control-Max-Age', '86400');
-    return reply.code(204).send();
-  }
-});
-
-// CORS: Add headers to all responses
-app.addHook('onSend', async (request, reply, payload) => {
-  const origin = request.headers.origin;
-  
-  if (origin) {
-    reply.header('Access-Control-Allow-Origin', origin);
-  } else {
-    reply.header('Access-Control-Allow-Origin', '*');
-  }
-  reply.header('Access-Control-Allow-Credentials', 'true');
-  reply.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-  reply.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-  
-  return payload;
+// Register CORS plugin - must be registered before other plugins and routes
+// Configured to allow all origins without restrictions
+app.register(cors, {
+  origin: true, // Allow all origins
+  credentials: true, // Allow credentials (cookies, authorization headers)
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Content-Length', 'Content-Type'],
 });
 
 app.register(rateLimit, {
