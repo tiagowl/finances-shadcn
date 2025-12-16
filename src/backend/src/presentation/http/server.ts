@@ -22,14 +22,16 @@ const app = Fastify({
   logger: false,
 });
 
-// Register CORS plugin - must be registered before other plugins and routes
+// Register CORS plugin FIRST - must be registered before other plugins and routes
 // Configured to allow all origins without restrictions
 app.register(cors, {
-  origin: true, // Allow all origins
+  origin: true, // Allow all origins (no restrictions)
   credentials: true, // Allow credentials (cookies, authorization headers)
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
   exposedHeaders: ['Content-Length', 'Content-Type'],
+  preflight: true, // Enable preflight requests
+  strictPreflight: false, // Don't require preflight for all requests
 });
 
 app.register(rateLimit, {

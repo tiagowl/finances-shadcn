@@ -22,16 +22,20 @@ dotenv.config();
 
 const app = Fastify({
   logger: false,
+  // Configure for serverless environment
+  disableRequestLogging: true,
 });
 
-// Register CORS plugin - must be registered before other plugins and routes
-// Configured to allow all origins without restrictions
+// Register CORS plugin FIRST - must be registered before other plugins and routes
+// Configured to allow all origins without restrictions for Vercel production
 app.register(cors, {
-  origin: true, // Allow all origins
+  origin: true, // Allow all origins (no restrictions)
   credentials: true, // Allow credentials (cookies, authorization headers)
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
   exposedHeaders: ['Content-Length', 'Content-Type'],
+  preflight: true, // Enable preflight requests
+  strictPreflight: false, // Don't require preflight for all requests
 });
 
 app.register(rateLimit, {
@@ -67,9 +71,44 @@ app.register(shoppingListRoutes, { prefix: apiPrefix });
 app.register(notificationRoutes, { prefix: apiPrefix });
 
 // Serverless handler for Vercel
+// This handler ensures CORS headers are properly set in serverless environment
 export default async function handler(req: any, res: any) {
-  await app.ready();
-  app.server.emit('request', req, res);
+  // Get origin from request headers (case-insensitive)
+  const origin = req.headers?.origin || req.headers?.Origin || req.headers?.ORIGIN;
+  
+  // Set CORS headers before processing request (important for serverless)
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+  res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Type');
+  
+  // Handle preflight OPTIONS requests immediately
+  if (req.method === 'OPTIONS') {
+    res.statusCode = 204;
+    res.end();
+    return;
+  }
+  
+  try {
+    // Ensure app is ready before handling request
+    await app.ready();
+    
+    // Handle the request through Fastify
+    app.server.emit('request', req, res);
+  } catch (error) {
+    // If Fastify fails, still return a response with CORS headers
+    console.error('Error handling request:', error);
+    if (!res.headersSent) {
+      res.statusCode = 500;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ error: 'Internal server error' }));
+    }
+  }
 }
 
 // Also export app for direct usage if needed
