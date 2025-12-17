@@ -1,4 +1,4 @@
-import { Context } from 'hono';
+import { Context, StatusCode } from 'hono';
 import { AppError } from '@/shared/errors/app-error';
 import { logger } from '@/shared/logger';
 
@@ -13,7 +13,7 @@ export async function errorHandler(error: Error, c: Context) {
           ...(error instanceof Error && 'errors' in error && { errors: (error as any).errors }),
         },
       },
-      error.statusCode
+      error.statusCode as StatusCode
     );
   }
 
@@ -26,7 +26,7 @@ export async function errorHandler(error: Error, c: Context) {
         message: 'Internal server error',
       },
     },
-    500
+    500 as StatusCode
   );
 }
 
