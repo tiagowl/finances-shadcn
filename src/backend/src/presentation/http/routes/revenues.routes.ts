@@ -6,7 +6,7 @@ import { UpdateRevenueUseCase } from '@/application/use-cases/revenue/update-rev
 import { DeleteRevenueUseCase } from '@/application/use-cases/revenue/delete-revenue.use-case';
 import { PostgreSQLRevenueRepository } from '@/infrastructure/repositories/postgres-revenue.repository';
 import { createRevenueSchema } from '@/application/dto/create-revenue.dto';
-import { authMiddleware, requireAuth } from '../middleware/auth.middleware';
+import { authMiddleware } from '../middleware/auth.middleware';
 import { ValidationError } from '@/shared/errors/validation-error';
 
 // Helper function to format date as YYYY-MM-DD
@@ -26,7 +26,7 @@ const getRevenueUseCase = new GetRevenueUseCase(revenueRepository);
 const updateUseCase = new UpdateRevenueUseCase(revenueRepository);
 const deleteUseCase = new DeleteRevenueUseCase(revenueRepository);
 
-revenueRoutes.post('/revenues', authMiddleware, requireAuth, async (c) => {
+revenueRoutes.post('/revenues', authMiddleware, async (c) => {
   try {
     const body = await c.req.json();
     const dto = createRevenueSchema.parse(body);
@@ -54,7 +54,7 @@ revenueRoutes.post('/revenues', authMiddleware, requireAuth, async (c) => {
   }
 });
 
-revenueRoutes.get('/revenues', authMiddleware, requireAuth, async (c) => {
+revenueRoutes.get('/revenues', authMiddleware, async (c) => {
   const userId = c.get('userId');
   const limit = c.req.query('limit') ? parseInt(c.req.query('limit')!) : undefined;
   const offset = c.req.query('offset') ? parseInt(c.req.query('offset')!) : undefined;
@@ -75,7 +75,7 @@ revenueRoutes.get('/revenues', authMiddleware, requireAuth, async (c) => {
   });
 });
 
-revenueRoutes.get('/revenues/:id', authMiddleware, requireAuth, async (c) => {
+revenueRoutes.get('/revenues/:id', authMiddleware, async (c) => {
   const id = c.req.param('id');
   const userId = c.get('userId');
   const revenue = await getRevenueUseCase.execute(id, userId);
@@ -92,7 +92,7 @@ revenueRoutes.get('/revenues/:id', authMiddleware, requireAuth, async (c) => {
   });
 });
 
-revenueRoutes.put('/revenues/:id', authMiddleware, requireAuth, async (c) => {
+revenueRoutes.put('/revenues/:id', authMiddleware, async (c) => {
   try {
     const id = c.req.param('id');
     const body = await c.req.json();
@@ -118,7 +118,7 @@ revenueRoutes.put('/revenues/:id', authMiddleware, requireAuth, async (c) => {
   }
 });
 
-revenueRoutes.delete('/revenues/:id', authMiddleware, requireAuth, async (c) => {
+revenueRoutes.delete('/revenues/:id', authMiddleware, async (c) => {
   const id = c.req.param('id');
   const userId = c.get('userId');
   await deleteUseCase.execute(id, userId);

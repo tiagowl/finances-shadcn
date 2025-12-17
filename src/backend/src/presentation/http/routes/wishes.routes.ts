@@ -8,7 +8,7 @@ import { PostgreSQLWishRepository } from '@/infrastructure/repositories/postgres
 import { PostgreSQLCategoryRepository } from '@/infrastructure/repositories/postgres-category.repository';
 import { PostgreSQLExpenseRepository } from '@/infrastructure/repositories/postgres-expense.repository';
 import { createWishSchema } from '@/application/dto/create-wish.dto';
-import { authMiddleware, requireAuth } from '../middleware/auth.middleware';
+import { authMiddleware } from '../middleware/auth.middleware';
 import { ValidationError } from '@/shared/errors/validation-error';
 import { z } from 'zod';
 
@@ -28,7 +28,7 @@ const updateUseCase = new UpdateWishUseCase(repository, categoryRepository);
 const deleteUseCase = new DeleteWishUseCase(repository);
 const purchaseUseCase = new PurchaseWishUseCase(repository, expenseRepository, categoryRepository);
 
-wishRoutes.post('/wishes', authMiddleware, requireAuth, async (c) => {
+wishRoutes.post('/wishes', authMiddleware, async (c) => {
   try {
     const body = await c.req.json();
     const dto = createWishSchema.parse(body);
@@ -56,7 +56,7 @@ wishRoutes.post('/wishes', authMiddleware, requireAuth, async (c) => {
   }
 });
 
-wishRoutes.get('/wishes', authMiddleware, requireAuth, async (c) => {
+wishRoutes.get('/wishes', authMiddleware, async (c) => {
   const userId = c.get('userId');
   const wishes = await getUseCase.execute(userId);
 
@@ -74,7 +74,7 @@ wishRoutes.get('/wishes', authMiddleware, requireAuth, async (c) => {
   });
 });
 
-wishRoutes.put('/wishes/:id', authMiddleware, requireAuth, async (c) => {
+wishRoutes.put('/wishes/:id', authMiddleware, async (c) => {
   try {
     const id = c.req.param('id');
     const body = await c.req.json();
@@ -100,14 +100,14 @@ wishRoutes.put('/wishes/:id', authMiddleware, requireAuth, async (c) => {
   }
 });
 
-wishRoutes.delete('/wishes/:id', authMiddleware, requireAuth, async (c) => {
+wishRoutes.delete('/wishes/:id', authMiddleware, async (c) => {
   const id = c.req.param('id');
   const userId = c.get('userId');
   await deleteUseCase.execute(id, userId);
   return c.body(null, 204);
 });
 
-wishRoutes.post('/wishes/:id/purchase', authMiddleware, requireAuth, async (c) => {
+wishRoutes.post('/wishes/:id/purchase', authMiddleware, async (c) => {
   try {
     const id = c.req.param('id');
     const body = await c.req.json().catch(() => ({}));

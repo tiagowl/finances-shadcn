@@ -23,7 +23,7 @@ import { PostgreSQLMonthlyRevenueRepository } from '@/infrastructure/repositorie
 import { createSimulationExpenseSchema } from '@/application/dto/create-simulation-expense.dto';
 import { createSimulationRevenueSchema } from '@/application/dto/create-simulation-revenue.dto';
 import { createSimulationCreditPurchaseSchema } from '@/application/dto/create-simulation-credit-purchase.dto';
-import { authMiddleware, requireAuth } from '../middleware/auth.middleware';
+import { authMiddleware } from '../middleware/auth.middleware';
 import { ValidationError } from '@/shared/errors/validation-error';
 
 // Helper function to format date as YYYY-MM-DD
@@ -71,7 +71,7 @@ const getProjectionUseCase = new GetSimulationProjectionUseCase(
 );
 
 // Simulation Expenses
-simulationRoutes.post('/simulation/expenses', authMiddleware, requireAuth, async (c) => {
+simulationRoutes.post('/simulation/expenses', authMiddleware, async (c) => {
   try {
     const body = await c.req.json();
     const dto = createSimulationExpenseSchema.parse(body);
@@ -98,7 +98,7 @@ simulationRoutes.post('/simulation/expenses', authMiddleware, requireAuth, async
   }
 });
 
-simulationRoutes.get('/simulation/expenses', authMiddleware, requireAuth, async (c) => {
+simulationRoutes.get('/simulation/expenses', authMiddleware, async (c) => {
   const userId = c.get('userId');
   const year = c.req.query('year') ? parseInt(c.req.query('year')!) : undefined;
   const month = c.req.query('month') ? parseInt(c.req.query('month')!) : undefined;
@@ -118,7 +118,7 @@ simulationRoutes.get('/simulation/expenses', authMiddleware, requireAuth, async 
   });
 });
 
-simulationRoutes.put('/simulation/expenses/:id', authMiddleware, requireAuth, async (c) => {
+simulationRoutes.put('/simulation/expenses/:id', authMiddleware, async (c) => {
   try {
     const id = c.req.param('id');
     const body = await c.req.json();
@@ -143,7 +143,7 @@ simulationRoutes.put('/simulation/expenses/:id', authMiddleware, requireAuth, as
   }
 });
 
-simulationRoutes.delete('/simulation/expenses/:id', authMiddleware, requireAuth, async (c) => {
+simulationRoutes.delete('/simulation/expenses/:id', authMiddleware, async (c) => {
   const id = c.req.param('id');
   const userId = c.get('userId');
   await deleteExpenseUseCase.execute(id, userId);
@@ -151,7 +151,7 @@ simulationRoutes.delete('/simulation/expenses/:id', authMiddleware, requireAuth,
 });
 
 // Simulation Revenues
-simulationRoutes.post('/simulation/revenues', authMiddleware, requireAuth, async (c) => {
+simulationRoutes.post('/simulation/revenues', authMiddleware, async (c) => {
   try {
     const body = await c.req.json();
     const dto = createSimulationRevenueSchema.parse(body);
@@ -178,7 +178,7 @@ simulationRoutes.post('/simulation/revenues', authMiddleware, requireAuth, async
   }
 });
 
-simulationRoutes.get('/simulation/revenues', authMiddleware, requireAuth, async (c) => {
+simulationRoutes.get('/simulation/revenues', authMiddleware, async (c) => {
   const userId = c.get('userId');
   const year = c.req.query('year') ? parseInt(c.req.query('year')!) : undefined;
   const month = c.req.query('month') ? parseInt(c.req.query('month')!) : undefined;
@@ -198,7 +198,7 @@ simulationRoutes.get('/simulation/revenues', authMiddleware, requireAuth, async 
   });
 });
 
-simulationRoutes.put('/simulation/revenues/:id', authMiddleware, requireAuth, async (c) => {
+simulationRoutes.put('/simulation/revenues/:id', authMiddleware, async (c) => {
   try {
     const id = c.req.param('id');
     const body = await c.req.json();
@@ -223,7 +223,7 @@ simulationRoutes.put('/simulation/revenues/:id', authMiddleware, requireAuth, as
   }
 });
 
-simulationRoutes.delete('/simulation/revenues/:id', authMiddleware, requireAuth, async (c) => {
+simulationRoutes.delete('/simulation/revenues/:id', authMiddleware, async (c) => {
   const id = c.req.param('id');
   const userId = c.get('userId');
   await deleteRevenueUseCase.execute(id, userId);
@@ -231,7 +231,7 @@ simulationRoutes.delete('/simulation/revenues/:id', authMiddleware, requireAuth,
 });
 
 // Simulation Credit Purchases
-simulationRoutes.post('/simulation/credit-purchases', authMiddleware, requireAuth, async (c) => {
+simulationRoutes.post('/simulation/credit-purchases', authMiddleware, async (c) => {
   try {
     const body = await c.req.json();
     const dto = createSimulationCreditPurchaseSchema.parse(body);
@@ -259,7 +259,7 @@ simulationRoutes.post('/simulation/credit-purchases', authMiddleware, requireAut
   }
 });
 
-simulationRoutes.get('/simulation/credit-purchases', authMiddleware, requireAuth, async (c) => {
+simulationRoutes.get('/simulation/credit-purchases', authMiddleware, async (c) => {
   const userId = c.get('userId');
   const purchases = await getCreditPurchasesUseCase.execute(userId);
 
@@ -277,7 +277,7 @@ simulationRoutes.get('/simulation/credit-purchases', authMiddleware, requireAuth
   });
 });
 
-simulationRoutes.put('/simulation/credit-purchases/:id', authMiddleware, requireAuth, async (c) => {
+simulationRoutes.put('/simulation/credit-purchases/:id', authMiddleware, async (c) => {
   try {
     const id = c.req.param('id');
     const body = await c.req.json();
@@ -303,7 +303,7 @@ simulationRoutes.put('/simulation/credit-purchases/:id', authMiddleware, require
   }
 });
 
-simulationRoutes.delete('/simulation/credit-purchases/:id', authMiddleware, requireAuth, async (c) => {
+simulationRoutes.delete('/simulation/credit-purchases/:id', authMiddleware, async (c) => {
   const id = c.req.param('id');
   const userId = c.get('userId');
   await deleteCreditPurchaseUseCase.execute(id, userId);
@@ -311,7 +311,7 @@ simulationRoutes.delete('/simulation/credit-purchases/:id', authMiddleware, requ
 });
 
 // Simulation Stats
-simulationRoutes.get('/simulation/stats', authMiddleware, requireAuth, async (c) => {
+simulationRoutes.get('/simulation/stats', authMiddleware, async (c) => {
   const userId = c.get('userId');
   const stats = await getStatsUseCase.execute(userId);
 
@@ -319,7 +319,7 @@ simulationRoutes.get('/simulation/stats', authMiddleware, requireAuth, async (c)
 });
 
 // Simulation Projection
-simulationRoutes.get('/simulation/projection', authMiddleware, requireAuth, async (c) => {
+simulationRoutes.get('/simulation/projection', authMiddleware, async (c) => {
   const userId = c.get('userId');
   const months = c.req.query('months') ? parseInt(c.req.query('months')!) : 12;
 
@@ -329,7 +329,7 @@ simulationRoutes.get('/simulation/projection', authMiddleware, requireAuth, asyn
 });
 
 // Get all expenses for simulation (regular + monthly)
-simulationRoutes.get('/simulation/all-expenses', authMiddleware, requireAuth, async (c) => {
+simulationRoutes.get('/simulation/all-expenses', authMiddleware, async (c) => {
   const userId = c.get('userId');
   const [regularExpenses, monthlyExpenses, simulationExpenses] = await Promise.all([
     expenseRepo.findByUserId(userId),
@@ -380,7 +380,7 @@ simulationRoutes.get('/simulation/all-expenses', authMiddleware, requireAuth, as
 });
 
 // Get all revenues for simulation (regular + monthly)
-simulationRoutes.get('/simulation/all-revenues', authMiddleware, requireAuth, async (c) => {
+simulationRoutes.get('/simulation/all-revenues', authMiddleware, async (c) => {
   const userId = c.get('userId');
   const [regularRevenues, monthlyRevenues, simulationRevenues] = await Promise.all([
     revenueRepo.findByUserId(userId),

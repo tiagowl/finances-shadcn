@@ -36,10 +36,6 @@ export async function authMiddleware(c: Context, next: Next) {
   }
 }
 
-export async function requireAuth(c: Context, next: Next) {
-  // This is now just an alias for authMiddleware
-  await authMiddleware(c, next);
-}
 
 
 

@@ -8,7 +8,7 @@ import { DeleteShoppingListItemUseCase } from '@/application/use-cases/shopping-
 import { ClearShoppingListUseCase } from '@/application/use-cases/shopping-list-item/clear-shopping-list.use-case';
 import { PostgreSQLShoppingListItemRepository } from '@/infrastructure/repositories/postgres-shopping-list-item.repository';
 import { createShoppingListItemSchema } from '@/application/dto/create-shopping-list-item.dto';
-import { authMiddleware, requireAuth } from '../middleware/auth.middleware';
+import { authMiddleware } from '../middleware/auth.middleware';
 import { ValidationError } from '@/shared/errors/validation-error';
 
 const shoppingListRoutes = new Hono();
@@ -22,7 +22,7 @@ const toggleUseCase = new ToggleShoppingListItemUseCase(repository);
 const deleteUseCase = new DeleteShoppingListItemUseCase(repository);
 const clearUseCase = new ClearShoppingListUseCase(repository);
 
-shoppingListRoutes.post('/shopping-list', authMiddleware, requireAuth, async (c) => {
+shoppingListRoutes.post('/shopping-list', authMiddleware, async (c) => {
   try {
     const body = await c.req.json();
     const dto = createShoppingListItemSchema.parse(body);
@@ -49,7 +49,7 @@ shoppingListRoutes.post('/shopping-list', authMiddleware, requireAuth, async (c)
   }
 });
 
-shoppingListRoutes.get('/shopping-list', authMiddleware, requireAuth, async (c) => {
+shoppingListRoutes.get('/shopping-list', authMiddleware, async (c) => {
   const userId = c.get('userId');
   const items = await getUseCase.execute(userId);
 
@@ -66,14 +66,14 @@ shoppingListRoutes.get('/shopping-list', authMiddleware, requireAuth, async (c) 
   });
 });
 
-shoppingListRoutes.get('/shopping-list/stats', authMiddleware, requireAuth, async (c) => {
+shoppingListRoutes.get('/shopping-list/stats', authMiddleware, async (c) => {
   const userId = c.get('userId');
   const stats = await getStatsUseCase.execute(userId);
 
   return c.json(stats);
 });
 
-shoppingListRoutes.put('/shopping-list/:id', authMiddleware, requireAuth, async (c) => {
+shoppingListRoutes.put('/shopping-list/:id', authMiddleware, async (c) => {
   try {
     const id = c.req.param('id');
     const body = await c.req.json();
@@ -98,7 +98,7 @@ shoppingListRoutes.put('/shopping-list/:id', authMiddleware, requireAuth, async 
   }
 });
 
-shoppingListRoutes.patch('/shopping-list/:id/toggle', authMiddleware, requireAuth, async (c) => {
+shoppingListRoutes.patch('/shopping-list/:id/toggle', authMiddleware, async (c) => {
   const id = c.req.param('id');
   const userId = c.get('userId');
   const item = await toggleUseCase.execute(id, userId);
@@ -114,14 +114,14 @@ shoppingListRoutes.patch('/shopping-list/:id/toggle', authMiddleware, requireAut
   });
 });
 
-shoppingListRoutes.delete('/shopping-list/:id', authMiddleware, requireAuth, async (c) => {
+shoppingListRoutes.delete('/shopping-list/:id', authMiddleware, async (c) => {
   const id = c.req.param('id');
   const userId = c.get('userId');
   await deleteUseCase.execute(id, userId);
   return c.body(null, 204);
 });
 
-shoppingListRoutes.delete('/shopping-list', authMiddleware, requireAuth, async (c) => {
+shoppingListRoutes.delete('/shopping-list', authMiddleware, async (c) => {
   const userId = c.get('userId');
   await clearUseCase.execute(userId);
   return c.body(null, 204);

@@ -5,7 +5,7 @@ import { UpdateMonthlyRevenueUseCase } from '@/application/use-cases/monthly-rev
 import { DeleteMonthlyRevenueUseCase } from '@/application/use-cases/monthly-revenue/delete-monthly-revenue.use-case';
 import { PostgreSQLMonthlyRevenueRepository } from '@/infrastructure/repositories/postgres-monthly-revenue.repository';
 import { createMonthlyRevenueSchema } from '@/application/dto/create-monthly-revenue.dto';
-import { authMiddleware, requireAuth } from '../middleware/auth.middleware';
+import { authMiddleware } from '../middleware/auth.middleware';
 import { ValidationError } from '@/shared/errors/validation-error';
 
 const monthlyRevenueRoutes = new Hono();
@@ -16,7 +16,7 @@ const getUseCase = new GetMonthlyRevenuesUseCase(repository);
 const updateUseCase = new UpdateMonthlyRevenueUseCase(repository);
 const deleteUseCase = new DeleteMonthlyRevenueUseCase(repository);
 
-monthlyRevenueRoutes.post('/monthly-revenues', authMiddleware, requireAuth, async (c) => {
+monthlyRevenueRoutes.post('/monthly-revenues', authMiddleware, async (c) => {
   try {
     const body = await c.req.json();
     const dto = createMonthlyRevenueSchema.parse(body);
@@ -43,7 +43,7 @@ monthlyRevenueRoutes.post('/monthly-revenues', authMiddleware, requireAuth, asyn
   }
 });
 
-monthlyRevenueRoutes.get('/monthly-revenues', authMiddleware, requireAuth, async (c) => {
+monthlyRevenueRoutes.get('/monthly-revenues', authMiddleware, async (c) => {
   const userId = c.get('userId');
   const monthlyRevenues = await getUseCase.execute(userId);
 
@@ -60,7 +60,7 @@ monthlyRevenueRoutes.get('/monthly-revenues', authMiddleware, requireAuth, async
   });
 });
 
-monthlyRevenueRoutes.put('/monthly-revenues/:id', authMiddleware, requireAuth, async (c) => {
+monthlyRevenueRoutes.put('/monthly-revenues/:id', authMiddleware, async (c) => {
   try {
     const id = c.req.param('id');
     const body = await c.req.json();
@@ -85,7 +85,7 @@ monthlyRevenueRoutes.put('/monthly-revenues/:id', authMiddleware, requireAuth, a
   }
 });
 
-monthlyRevenueRoutes.delete('/monthly-revenues/:id', authMiddleware, requireAuth, async (c) => {
+monthlyRevenueRoutes.delete('/monthly-revenues/:id', authMiddleware, async (c) => {
   const id = c.req.param('id');
   const userId = c.get('userId');
   await deleteUseCase.execute(id, userId);

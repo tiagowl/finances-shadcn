@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { PostgreSQLCategoryRepository } from '@/infrastructure/repositories/postgres-category.repository';
 import { PostgreSQLExpenseRepository } from '@/infrastructure/repositories/postgres-expense.repository';
 import { PostgreSQLMonthlyExpenseRepository } from '@/infrastructure/repositories/postgres-monthly-expense.repository';
-import { authMiddleware, requireAuth } from '../middleware/auth.middleware';
+import { authMiddleware } from '../middleware/auth.middleware';
 
 const notificationRoutes = new Hono();
 
@@ -10,7 +10,7 @@ const categoryRepository = new PostgreSQLCategoryRepository();
 const expenseRepository = new PostgreSQLExpenseRepository();
 const monthlyExpenseRepository = new PostgreSQLMonthlyExpenseRepository();
 
-notificationRoutes.get('/notifications', authMiddleware, requireAuth, async (c) => {
+notificationRoutes.get('/notifications', authMiddleware, async (c) => {
   const userId = c.get('userId');
   const notifications: Array<{
     id: string;

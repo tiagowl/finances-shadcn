@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { GetDashboardStatsUseCase } from '@/application/use-cases/dashboard/get-dashboard-stats.use-case';
 import { PostgreSQLRevenueRepository } from '@/infrastructure/repositories/postgres-revenue.repository';
 import { PostgreSQLExpenseRepository } from '@/infrastructure/repositories/postgres-expense.repository';
-import { authMiddleware, requireAuth } from '../middleware/auth.middleware';
+import { authMiddleware } from '../middleware/auth.middleware';
 
 // Helper function to format date as YYYY-MM-DD
 function formatDate(date: Date): string {
@@ -18,7 +18,7 @@ const revenueRepository = new PostgreSQLRevenueRepository();
 const expenseRepository = new PostgreSQLExpenseRepository();
 const getDashboardStatsUseCase = new GetDashboardStatsUseCase(revenueRepository, expenseRepository);
 
-dashboardRoutes.get('/dashboard/stats', authMiddleware, requireAuth, async (c) => {
+dashboardRoutes.get('/dashboard/stats', authMiddleware, async (c) => {
   const userId = c.get('userId');
   const stats = await getDashboardStatsUseCase.execute(userId);
 

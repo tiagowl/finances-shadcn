@@ -20,10 +20,12 @@ authRoutes.post('/register', async (c) => {
     const result = await registerUseCase.execute(dto);
 
     // Generate JWT token
+    const secret = process.env.JWT_SECRET || 'your-secret-key';
+    const expiresIn: string | number | undefined = process.env.JWT_EXPIRES_IN || '24h';
     const token = jwt.sign(
       { userId: result.user.id },
-      process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
+      secret,
+      { expiresIn } as jwt.SignOptions
     );
 
     return c.json(
@@ -54,10 +56,12 @@ authRoutes.post('/login', async (c) => {
     const result = await loginUseCase.execute(dto);
 
     // Generate JWT token
+    const secret = process.env.JWT_SECRET || 'your-secret-key';
+    const expiresIn: string | number | undefined = process.env.JWT_EXPIRES_IN || '24h';
     const token = jwt.sign(
       { userId: result.userId },
-      process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
+      secret,
+      { expiresIn } as jwt.SignOptions
     );
 
     return c.json({

@@ -5,7 +5,7 @@ import { DeleteExpenseUseCase } from '@/application/use-cases/expense/delete-exp
 import { PostgreSQLExpenseRepository } from '@/infrastructure/repositories/postgres-expense.repository';
 import { PostgreSQLCategoryRepository } from '@/infrastructure/repositories/postgres-category.repository';
 import { createExpenseSchema } from '@/application/dto/create-expense.dto';
-import { authMiddleware, requireAuth } from '../middleware/auth.middleware';
+import { authMiddleware } from '../middleware/auth.middleware';
 import { ValidationError } from '@/shared/errors/validation-error';
 
 // Helper function to format date as YYYY-MM-DD
@@ -24,7 +24,7 @@ const createUseCase = new CreateExpenseUseCase(expenseRepository, categoryReposi
 const updateUseCase = new UpdateExpenseUseCase(expenseRepository, categoryRepository);
 const deleteUseCase = new DeleteExpenseUseCase(expenseRepository);
 
-expenseRoutes.post('/expenses', authMiddleware, requireAuth, async (c) => {
+expenseRoutes.post('/expenses', authMiddleware, async (c) => {
   try {
     const body = await c.req.json();
     const dto = createExpenseSchema.parse(body);
@@ -53,7 +53,7 @@ expenseRoutes.post('/expenses', authMiddleware, requireAuth, async (c) => {
   }
 });
 
-expenseRoutes.get('/expenses', authMiddleware, requireAuth, async (c) => {
+expenseRoutes.get('/expenses', authMiddleware, async (c) => {
   const userId = c.get('userId');
   const limit = c.req.query('limit') ? parseInt(c.req.query('limit')!) : undefined;
   const offset = c.req.query('offset') ? parseInt(c.req.query('offset')!) : undefined;
@@ -75,7 +75,7 @@ expenseRoutes.get('/expenses', authMiddleware, requireAuth, async (c) => {
   });
 });
 
-expenseRoutes.put('/expenses/:id', authMiddleware, requireAuth, async (c) => {
+expenseRoutes.put('/expenses/:id', authMiddleware, async (c) => {
   try {
     const id = c.req.param('id');
     const body = await c.req.json();
@@ -102,7 +102,7 @@ expenseRoutes.put('/expenses/:id', authMiddleware, requireAuth, async (c) => {
   }
 });
 
-expenseRoutes.delete('/expenses/:id', authMiddleware, requireAuth, async (c) => {
+expenseRoutes.delete('/expenses/:id', authMiddleware, async (c) => {
   const id = c.req.param('id');
   const userId = c.get('userId');
   await deleteUseCase.execute(id, userId);
