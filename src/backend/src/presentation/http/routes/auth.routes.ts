@@ -1,4 +1,5 @@
-import { FastifyInstance } from 'fastify';
+import { Hono } from 'hono';
+import jwt from 'jsonwebtoken';
 import { RegisterUseCase } from '@/application/use-cases/auth/register.use-case';
 import { LoginUseCase } from '@/application/use-cases/auth/login.use-case';
 import { PostgreSQLUserRepository } from '@/infrastructure/repositories/postgres-user.repository';
@@ -6,20 +7,27 @@ import { createUserSchema } from '@/application/dto/create-user.dto';
 import { loginSchema } from '@/application/dto/login.dto';
 import { ValidationError } from '@/shared/errors/validation-error';
 
-export async function authRoutes(fastify: FastifyInstance) {
-  const userRepository = new PostgreSQLUserRepository();
-  const registerUseCase = new RegisterUseCase(userRepository);
-  const loginUseCase = new LoginUseCase(userRepository);
+const authRoutes = new Hono();
 
-  fastify.post('/register', async (request, reply) => {
-    try {
-      const dto = createUserSchema.parse(request.body);
-      const result = await registerUseCase.execute(dto);
+const userRepository = new PostgreSQLUserRepository();
+const registerUseCase = new RegisterUseCase(userRepository);
+const loginUseCase = new LoginUseCase(userRepository);
 
-      // Generate JWT token
-      const token = fastify.jwt.sign({ userId: result.user.id }, { expiresIn: process.env.JWT_EXPIRES_IN || '24h' });
+authRoutes.post('/register', async (c) => {
+  try {
+    const body = await c.req.json();
+    const dto = createUserSchema.parse(body);
+    const result = await registerUseCase.execute(dto);
 
-      return reply.status(201).send({
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: result.user.id },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
+    );
+
+    return c.json(
+      {
         user: {
           id: result.user.id,
           email: result.user.email,
@@ -28,39 +36,47 @@ export async function authRoutes(fastify: FastifyInstance) {
           updatedAt: result.user.updatedAt,
         },
         token,
-      });
-    } catch (error: any) {
-      if (error.name === 'ZodError') {
-        throw new ValidationError('Validation failed', error.errors);
-      }
-      throw error;
+      },
+      201
+    );
+  } catch (error: any) {
+    if (error.name === 'ZodError') {
+      throw new ValidationError('Validation failed', error.errors);
     }
-  });
+    throw error;
+  }
+});
 
-  fastify.post('/login', async (request, reply) => {
-    try {
-      const dto = loginSchema.parse(request.body);
-      const result = await loginUseCase.execute(dto);
+authRoutes.post('/login', async (c) => {
+  try {
+    const body = await c.req.json();
+    const dto = loginSchema.parse(body);
+    const result = await loginUseCase.execute(dto);
 
-      // Generate JWT token
-      const token = fastify.jwt.sign({ userId: result.userId }, { expiresIn: process.env.JWT_EXPIRES_IN || '24h' });
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: result.userId },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
+    );
 
-      return reply.send({
-        user: {
-          id: result.userId,
-          email: result.email,
-          name: result.name,
-        },
-        token,
-      });
-    } catch (error: any) {
-      if (error.name === 'ZodError') {
-        throw new ValidationError('Validation failed', error.errors);
-      }
-      throw error;
+    return c.json({
+      user: {
+        id: result.userId,
+        email: result.email,
+        name: result.name,
+      },
+      token,
+    });
+  } catch (error: any) {
+    if (error.name === 'ZodError') {
+      throw new ValidationError('Validation failed', error.errors);
     }
-  });
-}
+    throw error;
+  }
+});
+
+export { authRoutes };
 
 
 

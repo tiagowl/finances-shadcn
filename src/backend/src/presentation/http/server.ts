@@ -1,7 +1,5 @@
-import Fastify from 'fastify';
-import cors from '@fastify/cors';
-import rateLimit from '@fastify/rate-limit';
-import jwt from '@fastify/jwt';
+import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 import dotenv from 'dotenv';
 import { errorHandler } from './middleware/error.middleware';
 import { authRoutes } from './routes/auth.routes';
@@ -18,53 +16,44 @@ import { notificationRoutes } from './routes/notifications.routes';
 
 dotenv.config();
 
-const app = Fastify({
-  logger: false,
-});
+const app = new Hono();
 
-// Register CORS plugin FIRST - must be registered before other plugins and routes
-// Configured to allow all origins without restrictions
-app.register(cors, {
-  origin: true, // Allow all origins (no restrictions)
-  credentials: true, // Allow credentials (cookies, authorization headers)
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
-  exposedHeaders: ['Content-Length', 'Content-Type'],
-  preflight: true, // Enable preflight requests
-  strictPreflight: false, // Don't require preflight for all requests
-});
+// CORS middleware - configured to allow all origins without restrictions
+app.use(
+  '*',
+  cors({
+    origin: '*', // Allow all origins (no restrictions)
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+    exposeHeaders: ['Content-Length', 'Content-Type'],
+    credentials: false, // Set to false when origin is '*'
+  })
+);
 
-app.register(rateLimit, {
-  max: 100,
-  timeWindow: '1 minute',
-});
-
-app.register(jwt, {
-  secret: process.env.JWT_SECRET || 'your-secret-key',
-});
+// Rate limiting - removed for now, can be added later with a custom middleware or external package
 
 // Error handler
-app.setErrorHandler(errorHandler);
+app.onError(errorHandler);
 
 // Health check
-app.get('/health', async () => {
-  return { status: 'ok', timestamp: new Date().toISOString() };
+app.get('/health', (c) => {
+  return c.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 // Register routes
 const apiPrefix = process.env.API_PREFIX || '/api';
 
-app.register(authRoutes, { prefix: `${apiPrefix}/auth` });
-app.register(revenueRoutes, { prefix: apiPrefix });
-app.register(expenseRoutes, { prefix: apiPrefix });
-app.register(categoryRoutes, { prefix: apiPrefix });
-app.register(dashboardRoutes, { prefix: apiPrefix });
-app.register(monthlyExpenseRoutes, { prefix: apiPrefix });
-app.register(monthlyRevenueRoutes, { prefix: apiPrefix });
-app.register(simulationRoutes, { prefix: apiPrefix });
-app.register(wishRoutes, { prefix: apiPrefix });
-app.register(shoppingListRoutes, { prefix: apiPrefix });
-app.register(notificationRoutes, { prefix: apiPrefix });
+app.route(`${apiPrefix}/auth`, authRoutes);
+app.route(apiPrefix, revenueRoutes);
+app.route(apiPrefix, expenseRoutes);
+app.route(apiPrefix, categoryRoutes);
+app.route(apiPrefix, dashboardRoutes);
+app.route(apiPrefix, monthlyExpenseRoutes);
+app.route(apiPrefix, monthlyRevenueRoutes);
+app.route(apiPrefix, simulationRoutes);
+app.route(apiPrefix, wishRoutes);
+app.route(apiPrefix, shoppingListRoutes);
+app.route(apiPrefix, notificationRoutes);
 
 export default app;
 

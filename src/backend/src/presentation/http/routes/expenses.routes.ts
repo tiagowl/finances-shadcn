@@ -1,11 +1,11 @@
-import { FastifyInstance } from 'fastify';
+import { Hono } from 'hono';
 import { CreateExpenseUseCase } from '@/application/use-cases/expense/create-expense.use-case';
 import { UpdateExpenseUseCase } from '@/application/use-cases/expense/update-expense.use-case';
 import { DeleteExpenseUseCase } from '@/application/use-cases/expense/delete-expense.use-case';
 import { PostgreSQLExpenseRepository } from '@/infrastructure/repositories/postgres-expense.repository';
 import { PostgreSQLCategoryRepository } from '@/infrastructure/repositories/postgres-category.repository';
 import { createExpenseSchema } from '@/application/dto/create-expense.dto';
-import { authMiddleware } from '../middleware/auth.middleware';
+import { authMiddleware, requireAuth } from '../middleware/auth.middleware';
 import { ValidationError } from '@/shared/errors/validation-error';
 
 // Helper function to format date as YYYY-MM-DD
@@ -16,19 +16,23 @@ function formatDate(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-export async function expenseRoutes(fastify: FastifyInstance) {
-  const expenseRepository = new PostgreSQLExpenseRepository();
-  const categoryRepository = new PostgreSQLCategoryRepository();
-  const createUseCase = new CreateExpenseUseCase(expenseRepository, categoryRepository);
-  const updateUseCase = new UpdateExpenseUseCase(expenseRepository, categoryRepository);
-  const deleteUseCase = new DeleteExpenseUseCase(expenseRepository);
+const expenseRoutes = new Hono();
 
-  fastify.post('/expenses', { preHandler: [authMiddleware] }, async (request, reply) => {
-    try {
-      const dto = createExpenseSchema.parse(request.body);
-      const expense = await createUseCase.execute(dto, request.userId!);
+const expenseRepository = new PostgreSQLExpenseRepository();
+const categoryRepository = new PostgreSQLCategoryRepository();
+const createUseCase = new CreateExpenseUseCase(expenseRepository, categoryRepository);
+const updateUseCase = new UpdateExpenseUseCase(expenseRepository, categoryRepository);
+const deleteUseCase = new DeleteExpenseUseCase(expenseRepository);
 
-      return reply.status(201).send({
+expenseRoutes.post('/expenses', authMiddleware, requireAuth, async (c) => {
+  try {
+    const body = await c.req.json();
+    const dto = createExpenseSchema.parse(body);
+    const userId = c.get('userId');
+    const expense = await createUseCase.execute(dto, userId);
+
+    return c.json(
+      {
         id: expense.id,
         userId: expense.userId,
         categoryId: expense.categoryId,
@@ -38,66 +42,72 @@ export async function expenseRoutes(fastify: FastifyInstance) {
         notes: expense.notes,
         createdAt: expense.createdAt,
         updatedAt: expense.updatedAt,
-      });
-    } catch (error: any) {
-      if (error.name === 'ZodError') {
-        throw new ValidationError('Validation failed', error.errors);
-      }
-      throw error;
+      },
+      201
+    );
+  } catch (error: any) {
+    if (error.name === 'ZodError') {
+      throw new ValidationError('Validation failed', error.errors);
     }
+    throw error;
+  }
+});
+
+expenseRoutes.get('/expenses', authMiddleware, requireAuth, async (c) => {
+  const userId = c.get('userId');
+  const limit = c.req.query('limit') ? parseInt(c.req.query('limit')!) : undefined;
+  const offset = c.req.query('offset') ? parseInt(c.req.query('offset')!) : undefined;
+
+  const expenses = await expenseRepository.findByUserId(userId, limit, offset);
+
+  return c.json({
+    data: expenses.map((e) => ({
+      id: e.id,
+      userId: e.userId,
+      categoryId: e.categoryId,
+      name: e.name,
+      amount: e.amount,
+      date: formatDate(e.date),
+      notes: e.notes,
+      createdAt: e.createdAt,
+      updatedAt: e.updatedAt,
+    })),
   });
+});
 
-  fastify.get('/expenses', { preHandler: [authMiddleware] }, async (request, reply) => {
-    const query = request.query as { limit?: string; offset?: string };
-    const limit = query.limit ? parseInt(query.limit) : undefined;
-    const offset = query.offset ? parseInt(query.offset) : undefined;
+expenseRoutes.put('/expenses/:id', authMiddleware, requireAuth, async (c) => {
+  try {
+    const id = c.req.param('id');
+    const body = await c.req.json();
+    const dto = createExpenseSchema.parse(body);
+    const userId = c.get('userId');
+    const expense = await updateUseCase.execute(id, dto, userId);
 
-    const expenses = await expenseRepository.findByUserId(request.userId!, limit, offset);
-
-    return reply.send({
-      data: expenses.map((e) => ({
-        id: e.id,
-        userId: e.userId,
-        categoryId: e.categoryId,
-        name: e.name,
-        amount: e.amount,
-        date: formatDate(e.date),
-        notes: e.notes,
-        createdAt: e.createdAt,
-        updatedAt: e.updatedAt,
-      })),
+    return c.json({
+      id: expense.id,
+      userId: expense.userId,
+      categoryId: expense.categoryId,
+      name: expense.name,
+      amount: expense.amount,
+      date: formatDate(expense.date),
+      notes: expense.notes,
+      createdAt: expense.createdAt,
+      updatedAt: expense.updatedAt,
     });
-  });
-
-  fastify.put('/expenses/:id', { preHandler: [authMiddleware] }, async (request, reply) => {
-    try {
-      const params = request.params as { id: string };
-      const dto = createExpenseSchema.parse(request.body);
-      const expense = await updateUseCase.execute(params.id, dto, request.userId!);
-
-      return reply.send({
-        id: expense.id,
-        userId: expense.userId,
-        categoryId: expense.categoryId,
-        name: expense.name,
-        amount: expense.amount,
-        date: formatDate(expense.date),
-        notes: expense.notes,
-        createdAt: expense.createdAt,
-        updatedAt: expense.updatedAt,
-      });
-    } catch (error: any) {
-      if (error.name === 'ZodError') {
-        throw new ValidationError('Validation failed', error.errors);
-      }
-      throw error;
+  } catch (error: any) {
+    if (error.name === 'ZodError') {
+      throw new ValidationError('Validation failed', error.errors);
     }
-  });
+    throw error;
+  }
+});
 
-  fastify.delete('/expenses/:id', { preHandler: [authMiddleware] }, async (request, reply) => {
-    const params = request.params as { id: string };
-    await deleteUseCase.execute(params.id, request.userId!);
-    return reply.status(204).send();
-  });
-}
+expenseRoutes.delete('/expenses/:id', authMiddleware, requireAuth, async (c) => {
+  const id = c.req.param('id');
+  const userId = c.get('userId');
+  await deleteUseCase.execute(id, userId);
+  return c.body(null, 204);
+});
+
+export { expenseRoutes };
 

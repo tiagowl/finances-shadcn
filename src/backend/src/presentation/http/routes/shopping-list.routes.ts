@@ -1,4 +1,4 @@
-import { FastifyInstance } from 'fastify';
+import { Hono } from 'hono';
 import { CreateShoppingListItemUseCase } from '@/application/use-cases/shopping-list-item/create-shopping-list-item.use-case';
 import { GetShoppingListItemsUseCase } from '@/application/use-cases/shopping-list-item/get-shopping-list-items.use-case';
 import { GetShoppingListStatsUseCase } from '@/application/use-cases/shopping-list-item/get-shopping-list-stats.use-case';
@@ -8,25 +8,29 @@ import { DeleteShoppingListItemUseCase } from '@/application/use-cases/shopping-
 import { ClearShoppingListUseCase } from '@/application/use-cases/shopping-list-item/clear-shopping-list.use-case';
 import { PostgreSQLShoppingListItemRepository } from '@/infrastructure/repositories/postgres-shopping-list-item.repository';
 import { createShoppingListItemSchema } from '@/application/dto/create-shopping-list-item.dto';
-import { authMiddleware } from '../middleware/auth.middleware';
+import { authMiddleware, requireAuth } from '../middleware/auth.middleware';
 import { ValidationError } from '@/shared/errors/validation-error';
 
-export async function shoppingListRoutes(fastify: FastifyInstance) {
-  const repository = new PostgreSQLShoppingListItemRepository();
-  const createUseCase = new CreateShoppingListItemUseCase(repository);
-  const getUseCase = new GetShoppingListItemsUseCase(repository);
-  const getStatsUseCase = new GetShoppingListStatsUseCase(repository);
-  const updateUseCase = new UpdateShoppingListItemUseCase(repository);
-  const toggleUseCase = new ToggleShoppingListItemUseCase(repository);
-  const deleteUseCase = new DeleteShoppingListItemUseCase(repository);
-  const clearUseCase = new ClearShoppingListUseCase(repository);
+const shoppingListRoutes = new Hono();
 
-  fastify.post('/shopping-list', { preHandler: [authMiddleware] }, async (request, reply) => {
-    try {
-      const dto = createShoppingListItemSchema.parse(request.body);
-      const item = await createUseCase.execute(dto, request.userId!);
+const repository = new PostgreSQLShoppingListItemRepository();
+const createUseCase = new CreateShoppingListItemUseCase(repository);
+const getUseCase = new GetShoppingListItemsUseCase(repository);
+const getStatsUseCase = new GetShoppingListStatsUseCase(repository);
+const updateUseCase = new UpdateShoppingListItemUseCase(repository);
+const toggleUseCase = new ToggleShoppingListItemUseCase(repository);
+const deleteUseCase = new DeleteShoppingListItemUseCase(repository);
+const clearUseCase = new ClearShoppingListUseCase(repository);
 
-      return reply.status(201).send({
+shoppingListRoutes.post('/shopping-list', authMiddleware, requireAuth, async (c) => {
+  try {
+    const body = await c.req.json();
+    const dto = createShoppingListItemSchema.parse(body);
+    const userId = c.get('userId');
+    const item = await createUseCase.execute(dto, userId);
+
+    return c.json(
+      {
         id: item.id,
         userId: item.userId,
         name: item.name,
@@ -34,65 +38,50 @@ export async function shoppingListRoutes(fastify: FastifyInstance) {
         isPurchased: item.isPurchased,
         createdAt: item.createdAt,
         updatedAt: item.updatedAt,
-      });
-    } catch (error: any) {
-      if (error.name === 'ZodError') {
-        throw new ValidationError('Validation failed', error.errors);
-      }
-      throw error;
+      },
+      201
+    );
+  } catch (error: any) {
+    if (error.name === 'ZodError') {
+      throw new ValidationError('Validation failed', error.errors);
     }
+    throw error;
+  }
+});
+
+shoppingListRoutes.get('/shopping-list', authMiddleware, requireAuth, async (c) => {
+  const userId = c.get('userId');
+  const items = await getUseCase.execute(userId);
+
+  return c.json({
+    data: items.map((item) => ({
+      id: item.id,
+      userId: item.userId,
+      name: item.name,
+      price: item.price,
+      isPurchased: item.isPurchased,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
+    })),
   });
+});
 
-  fastify.get('/shopping-list', { preHandler: [authMiddleware] }, async (request, reply) => {
-    const items = await getUseCase.execute(request.userId!);
+shoppingListRoutes.get('/shopping-list/stats', authMiddleware, requireAuth, async (c) => {
+  const userId = c.get('userId');
+  const stats = await getStatsUseCase.execute(userId);
 
-    return reply.send({
-      data: items.map((item) => ({
-        id: item.id,
-        userId: item.userId,
-        name: item.name,
-        price: item.price,
-        isPurchased: item.isPurchased,
-        createdAt: item.createdAt,
-        updatedAt: item.updatedAt,
-      })),
-    });
-  });
+  return c.json(stats);
+});
 
-  fastify.get('/shopping-list/stats', { preHandler: [authMiddleware] }, async (request, reply) => {
-    const stats = await getStatsUseCase.execute(request.userId!);
+shoppingListRoutes.put('/shopping-list/:id', authMiddleware, requireAuth, async (c) => {
+  try {
+    const id = c.req.param('id');
+    const body = await c.req.json();
+    const dto = createShoppingListItemSchema.parse(body);
+    const userId = c.get('userId');
+    const item = await updateUseCase.execute(id, dto, userId);
 
-    return reply.send(stats);
-  });
-
-  fastify.put('/shopping-list/:id', { preHandler: [authMiddleware] }, async (request, reply) => {
-    try {
-      const params = request.params as { id: string };
-      const dto = createShoppingListItemSchema.parse(request.body);
-      const item = await updateUseCase.execute(params.id, dto, request.userId!);
-
-      return reply.send({
-        id: item.id,
-        userId: item.userId,
-        name: item.name,
-        price: item.price,
-        isPurchased: item.isPurchased,
-        createdAt: item.createdAt,
-        updatedAt: item.updatedAt,
-      });
-    } catch (error: any) {
-      if (error.name === 'ZodError') {
-        throw new ValidationError('Validation failed', error.errors);
-      }
-      throw error;
-    }
-  });
-
-  fastify.patch('/shopping-list/:id/toggle', { preHandler: [authMiddleware] }, async (request, reply) => {
-    const params = request.params as { id: string };
-    const item = await toggleUseCase.execute(params.id, request.userId!);
-
-    return reply.send({
+    return c.json({
       id: item.id,
       userId: item.userId,
       name: item.name,
@@ -101,21 +90,41 @@ export async function shoppingListRoutes(fastify: FastifyInstance) {
       createdAt: item.createdAt,
       updatedAt: item.updatedAt,
     });
+  } catch (error: any) {
+    if (error.name === 'ZodError') {
+      throw new ValidationError('Validation failed', error.errors);
+    }
+    throw error;
+  }
+});
+
+shoppingListRoutes.patch('/shopping-list/:id/toggle', authMiddleware, requireAuth, async (c) => {
+  const id = c.req.param('id');
+  const userId = c.get('userId');
+  const item = await toggleUseCase.execute(id, userId);
+
+  return c.json({
+    id: item.id,
+    userId: item.userId,
+    name: item.name,
+    price: item.price,
+    isPurchased: item.isPurchased,
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
   });
+});
 
-  fastify.delete('/shopping-list/:id', { preHandler: [authMiddleware] }, async (request, reply) => {
-    const params = request.params as { id: string };
-    await deleteUseCase.execute(params.id, request.userId!);
-    return reply.status(204).send();
-  });
+shoppingListRoutes.delete('/shopping-list/:id', authMiddleware, requireAuth, async (c) => {
+  const id = c.req.param('id');
+  const userId = c.get('userId');
+  await deleteUseCase.execute(id, userId);
+  return c.body(null, 204);
+});
 
-  fastify.delete('/shopping-list', { preHandler: [authMiddleware] }, async (request, reply) => {
-    await clearUseCase.execute(request.userId!);
-    return reply.status(204).send();
-  });
-}
+shoppingListRoutes.delete('/shopping-list', authMiddleware, requireAuth, async (c) => {
+  const userId = c.get('userId');
+  await clearUseCase.execute(userId);
+  return c.body(null, 204);
+});
 
-
-
-
-
+export { shoppingListRoutes };

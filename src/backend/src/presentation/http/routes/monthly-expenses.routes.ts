@@ -1,26 +1,30 @@
-import { FastifyInstance } from 'fastify';
+import { Hono } from 'hono';
 import { CreateMonthlyExpenseUseCase } from '@/application/use-cases/monthly-expense/create-monthly-expense.use-case';
 import { GetMonthlyExpensesUseCase } from '@/application/use-cases/monthly-expense/get-monthly-expenses.use-case';
 import { UpdateMonthlyExpenseUseCase } from '@/application/use-cases/monthly-expense/update-monthly-expense.use-case';
 import { DeleteMonthlyExpenseUseCase } from '@/application/use-cases/monthly-expense/delete-monthly-expense.use-case';
 import { PostgreSQLMonthlyExpenseRepository } from '@/infrastructure/repositories/postgres-monthly-expense.repository';
 import { createMonthlyExpenseSchema } from '@/application/dto/create-monthly-expense.dto';
-import { authMiddleware } from '../middleware/auth.middleware';
+import { authMiddleware, requireAuth } from '../middleware/auth.middleware';
 import { ValidationError } from '@/shared/errors/validation-error';
 
-export async function monthlyExpenseRoutes(fastify: FastifyInstance) {
-  const repository = new PostgreSQLMonthlyExpenseRepository();
-  const createUseCase = new CreateMonthlyExpenseUseCase(repository);
-  const getUseCase = new GetMonthlyExpensesUseCase(repository);
-  const updateUseCase = new UpdateMonthlyExpenseUseCase(repository);
-  const deleteUseCase = new DeleteMonthlyExpenseUseCase(repository);
+const monthlyExpenseRoutes = new Hono();
 
-  fastify.post('/monthly-expenses', { preHandler: [authMiddleware] }, async (request, reply) => {
-    try {
-      const dto = createMonthlyExpenseSchema.parse(request.body);
-      const monthlyExpense = await createUseCase.execute(dto, request.userId!);
+const repository = new PostgreSQLMonthlyExpenseRepository();
+const createUseCase = new CreateMonthlyExpenseUseCase(repository);
+const getUseCase = new GetMonthlyExpensesUseCase(repository);
+const updateUseCase = new UpdateMonthlyExpenseUseCase(repository);
+const deleteUseCase = new DeleteMonthlyExpenseUseCase(repository);
 
-      return reply.status(201).send({
+monthlyExpenseRoutes.post('/monthly-expenses', authMiddleware, requireAuth, async (c) => {
+  try {
+    const body = await c.req.json();
+    const dto = createMonthlyExpenseSchema.parse(body);
+    const userId = c.get('userId');
+    const monthlyExpense = await createUseCase.execute(dto, userId);
+
+    return c.json(
+      {
         id: monthlyExpense.id,
         userId: monthlyExpense.userId,
         name: monthlyExpense.name,
@@ -29,62 +33,69 @@ export async function monthlyExpenseRoutes(fastify: FastifyInstance) {
         cancellationLink: monthlyExpense.cancellationLink,
         createdAt: monthlyExpense.createdAt,
         updatedAt: monthlyExpense.updatedAt,
-      });
-    } catch (error: any) {
-      if (error.name === 'ZodError') {
-        throw new ValidationError('Validation failed', error.errors);
-      }
-      throw error;
+      },
+      201
+    );
+  } catch (error: any) {
+    if (error.name === 'ZodError') {
+      throw new ValidationError('Validation failed', error.errors);
     }
+    throw error;
+  }
+});
+
+monthlyExpenseRoutes.get('/monthly-expenses', authMiddleware, requireAuth, async (c) => {
+  const userId = c.get('userId');
+  const monthlyExpenses = await getUseCase.execute(userId);
+
+  return c.json({
+    data: monthlyExpenses.map((e) => ({
+      id: e.id,
+      userId: e.userId,
+      name: e.name,
+      amount: e.amount,
+      dayOfMonth: e.dayOfMonth,
+      cancellationLink: e.cancellationLink,
+      createdAt: e.createdAt,
+      updatedAt: e.updatedAt,
+    })),
   });
+});
 
-  fastify.get('/monthly-expenses', { preHandler: [authMiddleware] }, async (request, reply) => {
-    const monthlyExpenses = await getUseCase.execute(request.userId!);
+monthlyExpenseRoutes.put('/monthly-expenses/:id', authMiddleware, requireAuth, async (c) => {
+  try {
+    const id = c.req.param('id');
+    const body = await c.req.json();
+    const dto = createMonthlyExpenseSchema.parse(body);
+    const userId = c.get('userId');
+    const monthlyExpense = await updateUseCase.execute(id, dto, userId);
 
-    return reply.send({
-      data: monthlyExpenses.map((e) => ({
-        id: e.id,
-        userId: e.userId,
-        name: e.name,
-        amount: e.amount,
-        dayOfMonth: e.dayOfMonth,
-        cancellationLink: e.cancellationLink,
-        createdAt: e.createdAt,
-        updatedAt: e.updatedAt,
-      })),
+    return c.json({
+      id: monthlyExpense.id,
+      userId: monthlyExpense.userId,
+      name: monthlyExpense.name,
+      amount: monthlyExpense.amount,
+      dayOfMonth: monthlyExpense.dayOfMonth,
+      cancellationLink: monthlyExpense.cancellationLink,
+      createdAt: monthlyExpense.createdAt,
+      updatedAt: monthlyExpense.updatedAt,
     });
-  });
-
-  fastify.put('/monthly-expenses/:id', { preHandler: [authMiddleware] }, async (request, reply) => {
-    try {
-      const params = request.params as { id: string };
-      const dto = createMonthlyExpenseSchema.parse(request.body);
-      const monthlyExpense = await updateUseCase.execute(params.id, dto, request.userId!);
-
-      return reply.send({
-        id: monthlyExpense.id,
-        userId: monthlyExpense.userId,
-        name: monthlyExpense.name,
-        amount: monthlyExpense.amount,
-        dayOfMonth: monthlyExpense.dayOfMonth,
-        cancellationLink: monthlyExpense.cancellationLink,
-        createdAt: monthlyExpense.createdAt,
-        updatedAt: monthlyExpense.updatedAt,
-      });
-    } catch (error: any) {
-      if (error.name === 'ZodError') {
-        throw new ValidationError('Validation failed', error.errors);
-      }
-      throw error;
+  } catch (error: any) {
+    if (error.name === 'ZodError') {
+      throw new ValidationError('Validation failed', error.errors);
     }
-  });
+    throw error;
+  }
+});
 
-  fastify.delete('/monthly-expenses/:id', { preHandler: [authMiddleware] }, async (request, reply) => {
-    const params = request.params as { id: string };
-    await deleteUseCase.execute(params.id, request.userId!);
-    return reply.status(204).send();
-  });
-}
+monthlyExpenseRoutes.delete('/monthly-expenses/:id', authMiddleware, requireAuth, async (c) => {
+  const id = c.req.param('id');
+  const userId = c.get('userId');
+  await deleteUseCase.execute(id, userId);
+  return c.body(null, 204);
+});
+
+export { monthlyExpenseRoutes };
 
 
 

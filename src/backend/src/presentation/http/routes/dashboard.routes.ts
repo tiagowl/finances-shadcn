@@ -1,8 +1,8 @@
-import { FastifyInstance } from 'fastify';
+import { Hono } from 'hono';
 import { GetDashboardStatsUseCase } from '@/application/use-cases/dashboard/get-dashboard-stats.use-case';
 import { PostgreSQLRevenueRepository } from '@/infrastructure/repositories/postgres-revenue.repository';
 import { PostgreSQLExpenseRepository } from '@/infrastructure/repositories/postgres-expense.repository';
-import { authMiddleware } from '../middleware/auth.middleware';
+import { authMiddleware, requireAuth } from '../middleware/auth.middleware';
 
 // Helper function to format date as YYYY-MM-DD
 function formatDate(date: Date): string {
@@ -12,26 +12,29 @@ function formatDate(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-export async function dashboardRoutes(fastify: FastifyInstance) {
-  const revenueRepository = new PostgreSQLRevenueRepository();
-  const expenseRepository = new PostgreSQLExpenseRepository();
-  const getDashboardStatsUseCase = new GetDashboardStatsUseCase(revenueRepository, expenseRepository);
+const dashboardRoutes = new Hono();
 
-  fastify.get('/dashboard/stats', { preHandler: [authMiddleware] }, async (request, reply) => {
-    const stats = await getDashboardStatsUseCase.execute(request.userId!);
+const revenueRepository = new PostgreSQLRevenueRepository();
+const expenseRepository = new PostgreSQLExpenseRepository();
+const getDashboardStatsUseCase = new GetDashboardStatsUseCase(revenueRepository, expenseRepository);
 
-    return reply.send({
-      totalRevenue: stats.totalRevenue,
-      totalExpense: stats.totalExpense,
-      balance: stats.balance,
-      recentTransactions: stats.recentTransactions.map((t) => ({
-        id: t.id,
-        type: t.type,
-        name: t.name,
-        amount: t.amount,
-        date: formatDate(t.date),
-      })),
-    });
+dashboardRoutes.get('/dashboard/stats', authMiddleware, requireAuth, async (c) => {
+  const userId = c.get('userId');
+  const stats = await getDashboardStatsUseCase.execute(userId);
+
+  return c.json({
+    totalRevenue: stats.totalRevenue,
+    totalExpense: stats.totalExpense,
+    balance: stats.balance,
+    recentTransactions: stats.recentTransactions.map((t) => ({
+      id: t.id,
+      type: t.type,
+      name: t.name,
+      amount: t.amount,
+      date: formatDate(t.date),
+    })),
   });
-}
+});
+
+export { dashboardRoutes };
 

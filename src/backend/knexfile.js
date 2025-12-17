@@ -1,4 +1,5 @@
-require('dotenv').config();
+import dotenv from 'dotenv';
+dotenv.config();
 
 // Helper para criar conexão do banco
 function getConnection() {
@@ -27,7 +28,7 @@ function getConnection() {
   return connection;
 }
 
-module.exports = {
+export default {
   development: {
     client: 'postgresql',
     connection: getConnection(),

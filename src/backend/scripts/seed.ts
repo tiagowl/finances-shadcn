@@ -1,13 +1,11 @@
 import knex from 'knex';
 import { config } from 'dotenv';
 import * as path from 'path';
+import knexConfig from '../knexfile.js';
 
 config();
 
 // Carregar configuração do knexfile
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const knexConfig = require('../knexfile.js');
-
 const environment = process.env.NODE_ENV || 'development';
 const db = knex(knexConfig[environment]);
 

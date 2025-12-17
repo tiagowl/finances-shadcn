@@ -1,4 +1,4 @@
-import { FastifyInstance } from 'fastify';
+import { Hono } from 'hono';
 import { CreateWishUseCase } from '@/application/use-cases/wish/create-wish.use-case';
 import { GetWishesUseCase } from '@/application/use-cases/wish/get-wishes.use-case';
 import { UpdateWishUseCase } from '@/application/use-cases/wish/update-wish.use-case';
@@ -8,7 +8,7 @@ import { PostgreSQLWishRepository } from '@/infrastructure/repositories/postgres
 import { PostgreSQLCategoryRepository } from '@/infrastructure/repositories/postgres-category.repository';
 import { PostgreSQLExpenseRepository } from '@/infrastructure/repositories/postgres-expense.repository';
 import { createWishSchema } from '@/application/dto/create-wish.dto';
-import { authMiddleware } from '../middleware/auth.middleware';
+import { authMiddleware, requireAuth } from '../middleware/auth.middleware';
 import { ValidationError } from '@/shared/errors/validation-error';
 import { z } from 'zod';
 
@@ -17,22 +17,26 @@ const purchaseWishSchema = z.object({
   date: z.coerce.date().optional(),
 });
 
-export async function wishRoutes(fastify: FastifyInstance) {
-  const repository = new PostgreSQLWishRepository();
-  const categoryRepository = new PostgreSQLCategoryRepository();
-  const expenseRepository = new PostgreSQLExpenseRepository();
-  const createUseCase = new CreateWishUseCase(repository, categoryRepository);
-  const getUseCase = new GetWishesUseCase(repository);
-  const updateUseCase = new UpdateWishUseCase(repository, categoryRepository);
-  const deleteUseCase = new DeleteWishUseCase(repository);
-  const purchaseUseCase = new PurchaseWishUseCase(repository, expenseRepository, categoryRepository);
+const wishRoutes = new Hono();
 
-  fastify.post('/wishes', { preHandler: [authMiddleware] }, async (request, reply) => {
-    try {
-      const dto = createWishSchema.parse(request.body);
-      const wish = await createUseCase.execute(dto, request.userId!);
+const repository = new PostgreSQLWishRepository();
+const categoryRepository = new PostgreSQLCategoryRepository();
+const expenseRepository = new PostgreSQLExpenseRepository();
+const createUseCase = new CreateWishUseCase(repository, categoryRepository);
+const getUseCase = new GetWishesUseCase(repository);
+const updateUseCase = new UpdateWishUseCase(repository, categoryRepository);
+const deleteUseCase = new DeleteWishUseCase(repository);
+const purchaseUseCase = new PurchaseWishUseCase(repository, expenseRepository, categoryRepository);
 
-      return reply.status(201).send({
+wishRoutes.post('/wishes', authMiddleware, requireAuth, async (c) => {
+  try {
+    const body = await c.req.json();
+    const dto = createWishSchema.parse(body);
+    const userId = c.get('userId');
+    const wish = await createUseCase.execute(dto, userId);
+
+    return c.json(
+      {
         id: wish.id,
         userId: wish.userId,
         name: wish.name,
@@ -41,75 +45,79 @@ export async function wishRoutes(fastify: FastifyInstance) {
         amount: wish.amount,
         createdAt: wish.createdAt,
         updatedAt: wish.updatedAt,
-      });
-    } catch (error: any) {
-      if (error.name === 'ZodError') {
-        throw new ValidationError('Validation failed', error.errors);
-      }
-      throw error;
+      },
+      201
+    );
+  } catch (error: any) {
+    if (error.name === 'ZodError') {
+      throw new ValidationError('Validation failed', error.errors);
     }
+    throw error;
+  }
+});
+
+wishRoutes.get('/wishes', authMiddleware, requireAuth, async (c) => {
+  const userId = c.get('userId');
+  const wishes = await getUseCase.execute(userId);
+
+  return c.json({
+    data: wishes.map((w) => ({
+      id: w.id,
+      userId: w.userId,
+      name: w.name,
+      purchaseLink: w.purchaseLink,
+      categoryId: w.categoryId,
+      amount: w.amount,
+      createdAt: w.createdAt,
+      updatedAt: w.updatedAt,
+    })),
   });
+});
 
-  fastify.get('/wishes', { preHandler: [authMiddleware] }, async (request, reply) => {
-    const wishes = await getUseCase.execute(request.userId!);
+wishRoutes.put('/wishes/:id', authMiddleware, requireAuth, async (c) => {
+  try {
+    const id = c.req.param('id');
+    const body = await c.req.json();
+    const dto = createWishSchema.parse(body);
+    const userId = c.get('userId');
+    const wish = await updateUseCase.execute(id, dto, userId);
 
-      return reply.send({
-        data: wishes.map((w) => ({
-          id: w.id,
-          userId: w.userId,
-          name: w.name,
-          purchaseLink: w.purchaseLink,
-          categoryId: w.categoryId,
-          amount: w.amount,
-          createdAt: w.createdAt,
-          updatedAt: w.updatedAt,
-        })),
-      });
-  });
-
-  fastify.put('/wishes/:id', { preHandler: [authMiddleware] }, async (request, reply) => {
-    try {
-      const params = request.params as { id: string };
-      const dto = createWishSchema.parse(request.body);
-      const wish = await updateUseCase.execute(params.id, dto, request.userId!);
-
-      return reply.send({
-        id: wish.id,
-        userId: wish.userId,
-        name: wish.name,
-        purchaseLink: wish.purchaseLink,
-        categoryId: wish.categoryId,
-        amount: wish.amount,
-        createdAt: wish.createdAt,
-        updatedAt: wish.updatedAt,
-      });
-    } catch (error: any) {
-      if (error.name === 'ZodError') {
-        throw new ValidationError('Validation failed', error.errors);
-      }
-      throw error;
+    return c.json({
+      id: wish.id,
+      userId: wish.userId,
+      name: wish.name,
+      purchaseLink: wish.purchaseLink,
+      categoryId: wish.categoryId,
+      amount: wish.amount,
+      createdAt: wish.createdAt,
+      updatedAt: wish.updatedAt,
+    });
+  } catch (error: any) {
+    if (error.name === 'ZodError') {
+      throw new ValidationError('Validation failed', error.errors);
     }
-  });
+    throw error;
+  }
+});
 
-  fastify.delete('/wishes/:id', { preHandler: [authMiddleware] }, async (request, reply) => {
-    const params = request.params as { id: string };
-    await deleteUseCase.execute(params.id, request.userId!);
-    return reply.status(204).send();
-  });
+wishRoutes.delete('/wishes/:id', authMiddleware, requireAuth, async (c) => {
+  const id = c.req.param('id');
+  const userId = c.get('userId');
+  await deleteUseCase.execute(id, userId);
+  return c.body(null, 204);
+});
 
-  fastify.post('/wishes/:id/purchase', { preHandler: [authMiddleware] }, async (request, reply) => {
-    try {
-      const params = request.params as { id: string };
-      const body = purchaseWishSchema.parse(request.body || {});
-      
-      const result = await purchaseUseCase.execute(
-        params.id,
-        request.userId!,
-        body.amount,
-        body.date
-      );
+wishRoutes.post('/wishes/:id/purchase', authMiddleware, requireAuth, async (c) => {
+  try {
+    const id = c.req.param('id');
+    const body = await c.req.json().catch(() => ({}));
+    const purchaseData = purchaseWishSchema.parse(body);
+    const userId = c.get('userId');
 
-      return reply.status(201).send({
+    const result = await purchaseUseCase.execute(id, userId, purchaseData.amount, purchaseData.date);
+
+    return c.json(
+      {
         expense: {
           id: result.expense.id,
           userId: result.expense.userId,
@@ -123,15 +131,15 @@ export async function wishRoutes(fastify: FastifyInstance) {
         },
         budgetExceeded: result.budgetExceeded,
         remaining: result.remaining,
-      });
-    } catch (error: any) {
-      if (error.name === 'ZodError') {
-        throw new ValidationError('Validation failed', error.errors);
-      }
-      throw error;
+      },
+      201
+    );
+  } catch (error: any) {
+    if (error.name === 'ZodError') {
+      throw new ValidationError('Validation failed', error.errors);
     }
-  });
-}
+    throw error;
+  }
+});
 
-
-
+export { wishRoutes };

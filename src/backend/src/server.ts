@@ -1,13 +1,13 @@
 import app from './presentation/http/server';
+import { serve } from '@hono/node-server';
 import { logger } from './shared/logger';
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 const HOST = process.env.HOST || '0.0.0.0';
 
 // Serverless handler for Vercel and other serverless platforms
-export default async function handler(req: any, res: any) {
-  await app.ready();
-  app.server.emit('request', req, res);
+export default async function handler(req: Request) {
+  return app.fetch(req);
 }
 
 // Start server if not in Vercel serverless environment
@@ -15,7 +15,11 @@ export default async function handler(req: any, res: any) {
 if (process.env.VERCEL !== '1') {
   async function start() {
     try {
-      await app.listen({ port: PORT, host: HOST });
+      serve({
+        fetch: app.fetch,
+        port: PORT,
+        hostname: HOST,
+      });
       logger.info(`Server listening on http://${HOST}:${PORT}`);
     } catch (error) {
       logger.error('Error starting server', error);

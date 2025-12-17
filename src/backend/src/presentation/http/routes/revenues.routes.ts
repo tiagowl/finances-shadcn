@@ -1,4 +1,4 @@
-import { FastifyInstance } from 'fastify';
+import { Hono } from 'hono';
 import { CreateRevenueUseCase } from '@/application/use-cases/revenue/create-revenue.use-case';
 import { GetRevenuesUseCase } from '@/application/use-cases/revenue/get-revenues.use-case';
 import { GetRevenueUseCase } from '@/application/use-cases/revenue/get-revenue.use-case';
@@ -6,7 +6,7 @@ import { UpdateRevenueUseCase } from '@/application/use-cases/revenue/update-rev
 import { DeleteRevenueUseCase } from '@/application/use-cases/revenue/delete-revenue.use-case';
 import { PostgreSQLRevenueRepository } from '@/infrastructure/repositories/postgres-revenue.repository';
 import { createRevenueSchema } from '@/application/dto/create-revenue.dto';
-import { authMiddleware } from '../middleware/auth.middleware';
+import { authMiddleware, requireAuth } from '../middleware/auth.middleware';
 import { ValidationError } from '@/shared/errors/validation-error';
 
 // Helper function to format date as YYYY-MM-DD
@@ -17,20 +17,24 @@ function formatDate(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-export async function revenueRoutes(fastify: FastifyInstance) {
-  const revenueRepository = new PostgreSQLRevenueRepository();
-  const createUseCase = new CreateRevenueUseCase(revenueRepository);
-  const getRevenuesUseCase = new GetRevenuesUseCase(revenueRepository);
-  const getRevenueUseCase = new GetRevenueUseCase(revenueRepository);
-  const updateUseCase = new UpdateRevenueUseCase(revenueRepository);
-  const deleteUseCase = new DeleteRevenueUseCase(revenueRepository);
+const revenueRoutes = new Hono();
 
-  fastify.post('/revenues', { preHandler: [authMiddleware] }, async (request, reply) => {
-    try {
-      const dto = createRevenueSchema.parse(request.body);
-      const revenue = await createUseCase.execute(dto, request.userId!);
+const revenueRepository = new PostgreSQLRevenueRepository();
+const createUseCase = new CreateRevenueUseCase(revenueRepository);
+const getRevenuesUseCase = new GetRevenuesUseCase(revenueRepository);
+const getRevenueUseCase = new GetRevenueUseCase(revenueRepository);
+const updateUseCase = new UpdateRevenueUseCase(revenueRepository);
+const deleteUseCase = new DeleteRevenueUseCase(revenueRepository);
 
-      return reply.status(201).send({
+revenueRoutes.post('/revenues', authMiddleware, requireAuth, async (c) => {
+  try {
+    const body = await c.req.json();
+    const dto = createRevenueSchema.parse(body);
+    const userId = c.get('userId');
+    const revenue = await createUseCase.execute(dto, userId);
+
+    return c.json(
+      {
         id: revenue.id,
         userId: revenue.userId,
         name: revenue.name,
@@ -39,41 +43,64 @@ export async function revenueRoutes(fastify: FastifyInstance) {
         notes: revenue.notes,
         createdAt: revenue.createdAt,
         updatedAt: revenue.updatedAt,
-      });
-    } catch (error: any) {
-      if (error.name === 'ZodError') {
-        throw new ValidationError('Validation failed', error.errors);
-      }
-      throw error;
+      },
+      201
+    );
+  } catch (error: any) {
+    if (error.name === 'ZodError') {
+      throw new ValidationError('Validation failed', error.errors);
     }
+    throw error;
+  }
+});
+
+revenueRoutes.get('/revenues', authMiddleware, requireAuth, async (c) => {
+  const userId = c.get('userId');
+  const limit = c.req.query('limit') ? parseInt(c.req.query('limit')!) : undefined;
+  const offset = c.req.query('offset') ? parseInt(c.req.query('offset')!) : undefined;
+
+  const revenues = await getRevenuesUseCase.execute(userId, limit, offset);
+
+  return c.json({
+    data: revenues.map((r) => ({
+      id: r.id,
+      userId: r.userId,
+      name: r.name,
+      amount: r.amount,
+      date: formatDate(r.date),
+      notes: r.notes,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+    })),
   });
+});
 
-  fastify.get('/revenues', { preHandler: [authMiddleware] }, async (request, reply) => {
-    const query = request.query as { limit?: string; offset?: string };
-    const limit = query.limit ? parseInt(query.limit) : undefined;
-    const offset = query.offset ? parseInt(query.offset) : undefined;
+revenueRoutes.get('/revenues/:id', authMiddleware, requireAuth, async (c) => {
+  const id = c.req.param('id');
+  const userId = c.get('userId');
+  const revenue = await getRevenueUseCase.execute(id, userId);
 
-    const revenues = await getRevenuesUseCase.execute(request.userId!, limit, offset);
-
-    return reply.send({
-      data: revenues.map((r) => ({
-        id: r.id,
-        userId: r.userId,
-        name: r.name,
-        amount: r.amount,
-        date: formatDate(r.date),
-        notes: r.notes,
-        createdAt: r.createdAt,
-        updatedAt: r.updatedAt,
-      })),
-    });
+  return c.json({
+    id: revenue.id,
+    userId: revenue.userId,
+    name: revenue.name,
+    amount: revenue.amount,
+    date: formatDate(revenue.date),
+    notes: revenue.notes,
+    createdAt: revenue.createdAt,
+    updatedAt: revenue.updatedAt,
   });
+});
 
-  fastify.get('/revenues/:id', { preHandler: [authMiddleware] }, async (request, reply) => {
-    const params = request.params as { id: string };
-    const revenue = await getRevenueUseCase.execute(params.id, request.userId!);
+revenueRoutes.put('/revenues/:id', authMiddleware, requireAuth, async (c) => {
+  try {
+    const id = c.req.param('id');
+    const body = await c.req.json();
+    const dto = createRevenueSchema.parse(body);
+    const userId = c.get('userId');
+    const revenue = await updateUseCase.execute(id, dto, userId);
 
-    return reply.send({
+    return c.json({
       id: revenue.id,
       userId: revenue.userId,
       name: revenue.name,
@@ -83,36 +110,20 @@ export async function revenueRoutes(fastify: FastifyInstance) {
       createdAt: revenue.createdAt,
       updatedAt: revenue.updatedAt,
     });
-  });
-
-  fastify.put('/revenues/:id', { preHandler: [authMiddleware] }, async (request, reply) => {
-    try {
-      const params = request.params as { id: string };
-      const dto = createRevenueSchema.parse(request.body);
-      const revenue = await updateUseCase.execute(params.id, dto, request.userId!);
-
-      return reply.send({
-        id: revenue.id,
-        userId: revenue.userId,
-        name: revenue.name,
-        amount: revenue.amount,
-        date: formatDate(revenue.date),
-        notes: revenue.notes,
-        createdAt: revenue.createdAt,
-        updatedAt: revenue.updatedAt,
-      });
-    } catch (error: any) {
-      if (error.name === 'ZodError') {
-        throw new ValidationError('Validation failed', error.errors);
-      }
-      throw error;
+  } catch (error: any) {
+    if (error.name === 'ZodError') {
+      throw new ValidationError('Validation failed', error.errors);
     }
-  });
+    throw error;
+  }
+});
 
-  fastify.delete('/revenues/:id', { preHandler: [authMiddleware] }, async (request, reply) => {
-    const params = request.params as { id: string };
-    await deleteUseCase.execute(params.id, request.userId!);
-    return reply.status(204).send();
-  });
-}
+revenueRoutes.delete('/revenues/:id', authMiddleware, requireAuth, async (c) => {
+  const id = c.req.param('id');
+  const userId = c.get('userId');
+  await deleteUseCase.execute(id, userId);
+  return c.body(null, 204);
+});
+
+export { revenueRoutes };
 
