@@ -74,7 +74,7 @@ export function CreateWishSheet({ open, onOpenChange }: CreateWishSheetProps) {
     } catch (error: any) {
       toast({
         title: 'Erro ao criar desejo',
-        description: error.response?.data?.error?.message || 'Erro desconhecido',
+        description: error.message || error.response?.data?.error?.message || 'Erro desconhecido',
         variant: 'destructive',
       });
     }

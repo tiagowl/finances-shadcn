@@ -51,8 +51,8 @@ export function useAuth() {
     }
   };
 
-  const logout = () => {
-    logoutStore();
+  const logout = async () => {
+    await logoutStore();
     navigate('/login');
     toast({
       title: 'Logout realizado',

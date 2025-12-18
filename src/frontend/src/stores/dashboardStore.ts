@@ -19,7 +19,17 @@ export const useDashboardStore = create<DashboardState>((set) => ({
       const stats = await apiService.getDashboardStats();
       set({ stats, isLoading: false });
     } catch (error: any) {
-      set({ error: error.message, isLoading: false });
+      // Even on error, set default stats to show empty state
+      set({
+        stats: {
+          totalRevenue: 0,
+          totalExpense: 0,
+          balance: 0,
+          recentTransactions: [],
+        },
+        error: error.message,
+        isLoading: false,
+      });
     }
   },
 }));
