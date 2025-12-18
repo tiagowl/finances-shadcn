@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from '@/components/ui/toaster';
 import { ProtectedRoute } from '@/components/protected-route';
@@ -13,8 +14,15 @@ import { MonthlyExpensesPage } from '@/pages/monthly-expenses';
 import { SimulationPage } from '@/pages/simulation';
 import { WishesPage } from '@/pages/wishes';
 import { ShoppingListPage } from '@/pages/shopping-list';
+import { useAuthStore } from '@/stores/authStore';
 
 function App() {
+  const initialize = useAuthStore((state) => state.initialize);
+
+  useEffect(() => {
+    initialize();
+  }, [initialize]);
+
   return (
     <BrowserRouter>
       <Routes>

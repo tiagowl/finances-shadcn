@@ -69,7 +69,7 @@ export function EditCategorySheet({
     } catch (error: any) {
       toast({
         title: 'Erro ao atualizar categoria',
-        description: error.response?.data?.error?.message || 'Erro desconhecido',
+        description: error.message || error.response?.data?.error?.message || 'Erro desconhecido',
         variant: 'destructive',
       });
     }

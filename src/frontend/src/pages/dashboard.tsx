@@ -20,13 +20,13 @@ export function DashboardPage() {
     );
   }
 
-  if (!stats) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p>Nenhum dado disponível</p>
-      </div>
-    );
-  }
+  // Always show stats, even if empty
+  const displayStats = stats || {
+    totalRevenue: 0,
+    totalExpense: 0,
+    balance: 0,
+    recentTransactions: [],
+  };
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -42,9 +42,9 @@ export function DashboardPage() {
             <Wallet className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-xl md:text-2xl font-bold">{formatCurrency(stats.balance)}</div>
+            <div className="text-xl md:text-2xl font-bold">{formatCurrency(displayStats.balance)}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              {stats.balance >= 0 ? 'Saldo positivo' : 'Saldo negativo'}
+              {displayStats.balance >= 0 ? 'Saldo positivo' : 'Saldo negativo'}
             </p>
           </CardContent>
         </Card>
@@ -56,7 +56,7 @@ export function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-xl md:text-2xl font-bold text-revenue">
-              {formatCurrency(stats.totalRevenue)}
+              {formatCurrency(displayStats.totalRevenue)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">Total recebido</p>
           </CardContent>
@@ -69,7 +69,7 @@ export function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-xl md:text-2xl font-bold text-expense">
-              {formatCurrency(stats.totalExpense)}
+              {formatCurrency(displayStats.totalExpense)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">Total gasto</p>
           </CardContent>
@@ -81,11 +81,14 @@ export function DashboardPage() {
           <CardTitle className="text-base md:text-lg">Transações Recentes</CardTitle>
         </CardHeader>
         <CardContent>
-          {stats.recentTransactions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhuma transação recente</p>
+          {displayStats.recentTransactions.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <p className="text-sm text-muted-foreground">Nenhuma transação recente</p>
+              <p className="text-xs text-muted-foreground mt-2">Comece adicionando receitas ou despesas</p>
+            </div>
           ) : (
             <div className="space-y-2">
-              {stats.recentTransactions.map((transaction: RecentTransaction) => (
+              {displayStats.recentTransactions.map((transaction: RecentTransaction) => (
                 <div
                   key={transaction.id}
                   className="flex items-center justify-between border-b pb-2 last:border-0"

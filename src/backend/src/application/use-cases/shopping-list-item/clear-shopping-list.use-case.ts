@@ -13,4 +13,7 @@ export class ClearShoppingListUseCase {
 
 
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> firebase

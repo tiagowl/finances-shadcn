@@ -245,6 +245,7 @@ export interface CreateShoppingListItemRequest {
 
 export interface Notification {
   id: string;
+  userId?: string;
   type: 'budget_warning' | 'budget_exceeded' | 'monthly_expense_coming';
   title: string;
   message: string;
