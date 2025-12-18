@@ -14,7 +14,7 @@ const requiredEnvVars = {
 
 // Check if any required environment variable is missing or has default values
 const missingVars = Object.entries(requiredEnvVars)
-  .filter(([key, value]) => {
+  .filter(([_key, value]) => {
     if (!value) return true;
     // Check for default placeholder values
     const lowerValue = value.toLowerCase();
@@ -71,11 +71,15 @@ export const db: Firestore = getFirestore(app);
 
 // Connect to emulators in development if configured
 if (import.meta.env.DEV && import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true') {
-  if (!auth._delegate._config?.emulator) {
+  try {
     connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
+  } catch (error) {
+    // Emulator already connected, ignore error
   }
-  if (!db._delegate._settings?.host?.includes('localhost')) {
+  try {
     connectFirestoreEmulator(db, 'localhost', 8080);
+  } catch (error) {
+    // Emulator already connected, ignore error
   }
 }
 
